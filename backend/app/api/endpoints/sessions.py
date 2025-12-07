@@ -109,7 +109,8 @@ def create_block(session_id: str, block_in: block_schema.TranscriptionBlockBase,
         text=block_in.text,
         file_path=block_in.file_path,
         is_checked=block_in.is_checked,
-        duration=block_in.duration
+        duration=block_in.duration,
+        timestamp=datetime.now(JST).strftime("%H:%M:%S")
     )
     db.add(db_block)
     db.commit()

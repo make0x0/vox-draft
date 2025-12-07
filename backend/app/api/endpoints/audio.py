@@ -46,7 +46,7 @@ def upload_audio_file(
         type="audio",
         file_path=file_path,
         text="(Audio uploaded, waiting for transcription...)",
-        timestamp=datetime.utcnow().strftime("%H:%M:%S")
+        timestamp=datetime.now(JST).strftime("%H:%M:%S")
     )
     db.add(block)
     db.commit()

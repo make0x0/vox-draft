@@ -148,6 +148,16 @@ export default function App() {
     setTasks(prev => prev.filter(t => t.id !== id));
   };
 
+  const addNotification = (type: 'success' | 'error' | 'processing', message: string) => {
+    setTasks(prev => [...prev, {
+      id: Math.random().toString(36).substring(7),
+      type,
+      message,
+      startTime: Date.now(),
+      endTime: type !== 'processing' ? Date.now() : undefined
+    }]);
+  };
+
   // Settings State
   // Settings State
   const [templates, setTemplates] = useLocalStorage<PromptTemplate[]>('vox_templates', initialTemplates);
@@ -191,7 +201,7 @@ export default function App() {
         await fetchSessions();
       } catch (error) {
         console.error("Failed to auto-create session:", error);
-        alert("セッションの作成に失敗しました。");
+        addNotification("error", "セッションの作成に失敗しました。");
         return;
       }
     }
@@ -226,14 +236,14 @@ export default function App() {
       }
     } catch (err) {
       console.error("Upload failed", err);
-      alert("アップロードに失敗しました。");
+      addNotification("error", "アップロードに失敗しました。");
     }
   };
 
   const handleReTranscribe = async (id: string) => {
     try {
       await client.post(endpoints.stt.transcribe(id));
-      alert(`ブロックID: ${id} の再認識を開始しました (バックグラウンド)`);
+      addNotification("success", `ブロックID: ${id.substring(0, 6)}... の再認識を開始しました`);
       if (selectedSessionId) fetchBlocks(selectedSessionId);
     } catch (err) {
       console.error(err);
@@ -245,7 +255,7 @@ export default function App() {
 
   const handleRunLLM = async () => {
     if (!selectedSessionId) {
-      alert("セッションが選択されていません。");
+      addNotification("error", "セッションが選択されていません。");
       return;
     }
 
@@ -263,7 +273,7 @@ export default function App() {
     const targetBlocks = checkedBlocks.length > 0 ? checkedBlocks : blocks;
 
     if (targetBlocks.length === 0 && !editorContent.trim() && !extraPrompt.trim()) {
-      alert("コンテキスト（文字起こし、エディタ、またはプロンプト）が空です。");
+      addNotification("error", "コンテキスト（文字起こし、エディタ、またはプロンプト）が空です。");
       return;
     }
 
@@ -306,7 +316,7 @@ export default function App() {
       });
     } catch (err) {
       console.error(err);
-      alert("AI生成中にエラーが発生しました。");
+      addNotification("error", "AI生成中にエラーが発生しました。");
     }
   };
 
@@ -357,7 +367,7 @@ export default function App() {
   };
 
   const handlePromptRecordToggle = async () => {
-    alert("プロンプト音声入力機能は現在開発中です。");
+    addNotification("error", "プロンプト音声入力機能は現在開発中です。");
   };
 
   const handleMainRecordingToggle = async () => {
