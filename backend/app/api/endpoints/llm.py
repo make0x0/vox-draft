@@ -24,8 +24,8 @@ async def chat_stream(request: ChatRequest):
         model_to_use = request.model
 
     # Prepare OpenAI stream
-    import time
-    from openai import APIStatusError
+    import asyncio
+    from openai import APIStatusError, APIConnectionError
 
     async def event_generator():
         target_messages = request.messages # Messages are already in request
@@ -60,20 +60,30 @@ async def chat_stream(request: ChatRequest):
                 yield "data: [DONE]\n\n"
                 return # Success, exit loop
 
+            except APIConnectionError as e:
+                print(f"LLM Connection Error (Attempt {attempt+1}): {e}")
+                if attempt < max_retries:
+                    yield f"data: {json.dumps({'type': 'status', 'message': f'(Connection Error: Retrying {attempt+1}/{max_retries}...)'})}\n\n"
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    yield f"data: {json.dumps({'type': 'error', 'message': f'Connection Failed: Could not connect to {base_url}'})}\n\n"
+                    return
+
             except APIStatusError as e:
                 error_code = e.status_code
                 if attempt < max_retries:
-                    yield f"data: {json.dumps({'type': 'status', 'message': f'(Error {error_code}: Retrying {attempt+1}/{max_retries}...)'})}\n\n"
-                    time.sleep(retry_delay)
+                    yield f"data: {json.dumps({'type': 'status', 'message': f'(HTTP {error_code}: Retrying {attempt+1}/{max_retries}...)'})}\n\n"
+                    await asyncio.sleep(retry_delay)
                     retry_delay *= 2
                 else:
                     # Final error
-                    yield f"data: {json.dumps({'type': 'error', 'message': f'Error {error_code}: {e.message}'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'error', 'message': f'HTTP {error_code}: {e.message}'})}\n\n"
                     return
             except Exception as e:
                  if attempt < max_retries:
                     yield f"data: {json.dumps({'type': 'status', 'message': f'(Error: {str(e)}... Retrying {attempt+1}/{max_retries})'})}\n\n"
-                    time.sleep(retry_delay)
+                    await asyncio.sleep(retry_delay)
                     retry_delay *= 2
                  else:
                     yield f"data: {json.dumps({'type': 'error', 'message': f'Error: {str(e)}'})}\n\n"

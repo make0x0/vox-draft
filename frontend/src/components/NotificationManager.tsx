@@ -7,6 +7,7 @@ export interface TaskStatus {
     message: string;
     startTime: number;
     endTime?: number;
+    source?: 'block' | 'system';
 }
 
 interface NotificationManagerProps {

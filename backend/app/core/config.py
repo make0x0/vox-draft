@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     STT_AZURE_DEPLOYMENT: str = "whisper"
     STT_AZURE_API_VERSION: str = "2024-06-01"
     STT_AZURE_ENDPOINT: str = ""
+    STT_AZURE_ENDPOINT_RAW: str = ""
     STT_TIMEOUT: float = 60.0
     STT_MAX_RETRIES: int = 3
 
@@ -30,6 +31,7 @@ class Settings(BaseSettings):
     LLM_AZURE_DEPLOYMENT: str = "gpt-4o"
     LLM_AZURE_API_VERSION: str = "2024-06-01"
     LLM_AZURE_ENDPOINT: str = ""
+    LLM_AZURE_ENDPOINT_RAW: str = ""
     LLM_TIMEOUT: float = 60.0
     LLM_MAX_RETRIES: int = 3
 
@@ -60,6 +62,7 @@ def load_config():
             settings.STT_AZURE_DEPLOYMENT = stt.get("azure_deployment", "whisper")
             settings.STT_AZURE_API_VERSION = stt.get("azure_api_version", "2024-06-01")
             settings.STT_AZURE_ENDPOINT = stt.get("azure_endpoint", "") # Must be in YAML
+            settings.STT_AZURE_ENDPOINT_RAW = settings.STT_AZURE_ENDPOINT
             settings.STT_TIMEOUT = float(stt.get("timeout", 60.0))
             settings.STT_MAX_RETRIES = int(stt.get("max_retries", 3))
             _parse_azure_config(settings, "STT", settings.STT_AZURE_ENDPOINT)
@@ -70,6 +73,7 @@ def load_config():
             settings.LLM_AZURE_DEPLOYMENT = llm.get("azure_deployment", "gpt-4o")
             settings.LLM_AZURE_API_VERSION = llm.get("azure_api_version", "2024-06-01")
             settings.LLM_AZURE_ENDPOINT = llm.get("azure_endpoint", "") # Must be in YAML
+            settings.LLM_AZURE_ENDPOINT_RAW = settings.LLM_AZURE_ENDPOINT
             settings.LLM_TIMEOUT = float(llm.get("timeout", 60.0))
             settings.LLM_MAX_RETRIES = int(llm.get("max_retries", 3))
             _parse_azure_config(settings, "LLM", settings.LLM_AZURE_ENDPOINT)

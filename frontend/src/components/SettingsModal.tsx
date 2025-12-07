@@ -429,7 +429,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">プロバイダー</span>{apiConfig.stt.provider}</div>
                                     <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">デプロイメント/モデル</span>{apiConfig.stt.azure_deployment || "whisper-1"}</div>
                                     <div className="col-span-2 bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold flex justify-between">エンドポイント URL <span>(Timeout: {apiConfig.stt.timeout}s)</span></span>
-                                        <div className="font-mono text-xs break-all text-gray-600 truncate">{apiConfig.stt.azure_endpoint || apiConfig.stt.url}</div>
+                                        <div className="font-mono text-xs break-all text-gray-600">{apiConfig.stt.azure_endpoint || apiConfig.stt.url}</div>
                                     </div>
                                 </div>
 
@@ -439,7 +439,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">プロバイダー</span>{apiConfig.llm.provider}</div>
                                     <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">モデル/デプロイメント</span>{apiConfig.llm.azure_deployment || apiConfig.llm.model}</div>
                                     <div className="col-span-2 bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold flex justify-between">エンドポイント URL <span>(Timeout: {apiConfig.llm.timeout}s)</span></span>
-                                        <div className="font-mono text-xs break-all text-gray-600 truncate">{apiConfig.llm.azure_endpoint || apiConfig.llm.url}</div>
+                                        <div className="font-mono text-xs break-all text-gray-600">{apiConfig.llm.azure_endpoint || apiConfig.llm.url}</div>
                                     </div>
                                 </div>
                             </div>

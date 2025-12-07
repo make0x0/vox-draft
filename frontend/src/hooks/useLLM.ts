@@ -49,6 +49,7 @@ export const useLLM = (): UseLLMReturn => {
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
+            let isComplete = false;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -60,7 +61,10 @@ export const useLLM = (): UseLLMReturn => {
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
                         const dataStr = line.slice(6);
-                        if (dataStr === '[DONE]') continue;
+                        if (dataStr === '[DONE]') {
+                            isComplete = true;
+                            continue;
+                        }
                         try {
                             const data = JSON.parse(dataStr);
 
@@ -70,10 +74,9 @@ export const useLLM = (): UseLLMReturn => {
                                     onStatus(data.message, data.type);
                                 }
                                 if (data.type === 'error') {
-                                    // If strict error, maybe throw? Or just let caller handle notification.
-                                    // Let's not throw here to allow partial content if any? 
-                                    // But usually error event means stop.
-                                    // Wait, backend yields error event then returns.
+                                    const errMsg = data.message || "Unknown Error";
+                                    // Throwing here will be caught by catch block below
+                                    throw new Error(errMsg);
                                 }
                             } else if (data.content) {
                                 onData(data.content);
@@ -84,6 +87,11 @@ export const useLLM = (): UseLLMReturn => {
                     }
                 }
             }
+
+            if (!isComplete) {
+                throw new Error("Stream ended unexpectedly without completion signal.");
+            }
+
         } catch (err: any) {
             if (err.name === 'AbortError') {
                 console.log('LLM generation aborted');

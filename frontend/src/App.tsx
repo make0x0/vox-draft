@@ -91,7 +91,7 @@ export default function App() {
   // Monitor blocks to update tasks
   useEffect(() => {
     // 1. Detect new processing blocks
-    const processingBlocks = blocks.filter(b => b.text === '(Transcription queued...)');
+    const processingBlocks = blocks.filter(b => b.text === '(Transcription queued...)' || b.text === '(Processing...)');
 
     setTasks(prevTasks => {
       let newTasks = [...prevTasks];
@@ -104,7 +104,8 @@ export default function App() {
             id: b.id,
             type: 'processing',
             message: `ブロック ${b.id.substring(0, 6)}... の音声を認識中`,
-            startTime: Date.now()
+            startTime: Date.now(),
+            source: 'block'
           });
           changed = true;
         }
@@ -114,19 +115,26 @@ export default function App() {
       newTasks = newTasks.map(t => {
         if (t.type !== 'processing') return t; // Already done
 
+        // Skip system tasks (LLM etc)
+        if (t.source === 'system') return t;
+
         // Find current block state
         const block = blocks.find(b => b.id === t.id);
         if (!block) {
+          console.log(`[Debug] Block ${t.id} disappeared`);
           // Block disappeared? Mark error or ignore?
           // Let's mark error
           changed = true;
           return { ...t, type: 'error', message: 'ブロックが見つかりません', endTime: Date.now() };
         }
 
+        console.log(`[Debug] Checking block ${block.id}: text="${block.text}"`);
+
         // Check for specific processing states (queued, retrying, etc.)
         // Backend now sends: "(Transcription queued...)", "(Retry 1/3...)", "(Error 500: Retrying...)"
         // All start with "(".
         if (block.text.startsWith('(') && block.text.endsWith(')')) {
+          console.log(`[Debug] Processing: ${block.id}, text: ${block.text}`);
           // Still processing, update message if changed
           if (block.text !== t.message) {
             changed = true;
@@ -136,9 +144,31 @@ export default function App() {
         }
 
         changed = true;
-        if (block.text.startsWith('[Error]')) {
-          return { ...t, type: 'error', message: block.text, endTime: Date.now() };
+
+        // Define explicit error conditions
+        const isError = block.text.startsWith('[Error]') ||
+          block.text.includes('Error:') ||
+          block.text.includes('Failed:') ||
+          // If text is very short/empty and NOT processing, it might be an empty transcription or failure
+          (!block.text && !block.filePath); // Just a heuristic, maybe not reliable
+
+        if (isError) {
+          console.log(`[Debug] Error detected: ${block.id}, text: ${block.text}`);
+          return { ...t, type: 'error', message: block.text || '認識エラー', endTime: Date.now() };
+        } else if (block.text.startsWith('(') && block.text.includes('Connection Error')) {
+          // Should be caught by the first if, but just in case
+          console.log(`[Debug] Connection Error Retry: ${block.id}, text: ${block.text}`);
+          if (block.text !== t.message) {
+            changed = true;
+            return { ...t, type: 'processing', message: block.text, endTime: undefined };
+          }
+          return t;
         } else {
+          // Success case
+          // Assuming if it's not processing (starts with paren) and not explicit error, it's content.
+          // However, if we crashed, we might have garbage or old text? 
+          // We rely on backend updating to [Error] on crash.
+          console.log(`[Debug] Success: ${block.id}, text: ${block.text}`);
           return { ...t, type: 'success', message: '認識が完了しました', endTime: Date.now() };
         }
       });
@@ -362,7 +392,8 @@ export default function App() {
       id: llmTaskId,
       type: 'processing',
       message: "AI生成を開始します...",
-      startTime: Date.now()
+      startTime: Date.now(),
+      source: 'system'
     }]);
 
     try {
@@ -382,9 +413,10 @@ export default function App() {
       setTasks(prev => prev.map(t => t.id === llmTaskId ? { ...t, type: 'success', message: '生成が完了しました', endTime: Date.now() } : t));
 
     } catch (err) {
-      console.error(err);
+      console.error("LLM Generation Error caught in App.tsx:", err);
       // Ensure error shown
-      setTasks(prev => prev.map(t => t.id === llmTaskId ? { ...t, type: 'error', message: "AI生成中にエラーが発生しました。", endTime: Date.now() } : t));
+      const errMsg = (err as Error).message || "AI生成中にエラーが発生しました。";
+      setTasks(prev => prev.map(t => t.id === llmTaskId ? { ...t, type: 'error', message: errMsg, endTime: Date.now() } : t));
     }
   };
 
