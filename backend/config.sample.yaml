@@ -21,11 +21,14 @@ system:
   stt:
     provider: "openai" # "openai" or "azure"
     openai_api_url: "https://api.openai.com/v1/audio/transcriptions"
-    # Azure specific (if provider is azure)
+    
+    # Azure Configuration (if provider is "azure")
+    # NOTE: API Keys/Tokens must be set in .env (AZURE_OPENAI_API_KEY / AZURE_OPENAI_AD_TOKEN)
     azure_deployment: "whisper" 
     azure_api_version: "2024-06-01"
-    # Option A: Full URL (Recommended) -> azure_deployment above is ignored.
+    # REQUIRED for Azure: Full URL to your deployment
     azure_endpoint: "https://your-resource.openai.azure.com/openai/deployments/whisper/audio/transcriptions?api-version=2024-06-01" 
+    
     timeout: 60
     max_retries: 3
 
@@ -33,10 +36,14 @@ system:
     provider: "openai" # "openai" or "azure"
     openai_api_url: "https://api.openai.com/v1/chat/completions"
     model: "gpt-4o"
-    # Azure specific (if provider is azure)
+    
+    # Azure Configuration (if provider is "azure")
+    # NOTE: API Keys/Tokens must be set in .env (AZURE_OPENAI_API_KEY / AZURE_OPENAI_AD_TOKEN)
     azure_deployment: "gpt-4o"
     azure_api_version: "2024-06-01"
-    # Endoint: 
-    # Option A: Full URL (Recommended) -> azure_deployment above is ignored.
+    # REQUIRED for Azure: Full URL to your deployment
     azure_endpoint: "https://your-resource.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-06-01"
-    # Set env var OPENAI_API_KEY
+    
+    timeout: 60
+    max_retries: 3
+    # NOTE: OPENAI_API_KEY must be set in .env if using OpenAI provider

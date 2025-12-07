@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     # Azure Env Vars
     AZURE_OPENAI_API_KEY: str = os.getenv("AZURE_OPENAI_API_KEY", "")
     AZURE_OPENAI_AD_TOKEN: str = os.getenv("AZURE_OPENAI_AD_TOKEN", "") # Bearer Token support
-    AZURE_OPENAI_ENDPOINT: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+    AZURE_OPENAI_ENDPOINT: str = "" # Set by yaml logic only
 
     # Loaded from yaml
     ALLOWED_ORIGINS: list = ["*"]
@@ -50,8 +50,8 @@ def load_config():
             stt = system.get("stt", {})
             llm = system.get("llm", {})
 
-            # Global Env Fallback
-            default_azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+            # Global Env Fallback -> REMOVED to enforce config.yaml source
+            # default_azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
 
             settings.ALLOWED_ORIGINS = system.get("server", {}).get("allowed_origins", ["*"])
             
@@ -59,7 +59,7 @@ def load_config():
             settings.STT_PROVIDER = stt.get("provider", "openai")
             settings.STT_AZURE_DEPLOYMENT = stt.get("azure_deployment", "whisper")
             settings.STT_AZURE_API_VERSION = stt.get("azure_api_version", "2024-06-01")
-            settings.STT_AZURE_ENDPOINT = stt.get("azure_endpoint", default_azure_endpoint)
+            settings.STT_AZURE_ENDPOINT = stt.get("azure_endpoint", "") # Must be in YAML
             settings.STT_TIMEOUT = float(stt.get("timeout", 60.0))
             settings.STT_MAX_RETRIES = int(stt.get("max_retries", 3))
             _parse_azure_config(settings, "STT", settings.STT_AZURE_ENDPOINT)
@@ -69,7 +69,7 @@ def load_config():
             settings.LLM_MODEL = llm.get("model", "gpt-4o")
             settings.LLM_AZURE_DEPLOYMENT = llm.get("azure_deployment", "gpt-4o")
             settings.LLM_AZURE_API_VERSION = llm.get("azure_api_version", "2024-06-01")
-            settings.LLM_AZURE_ENDPOINT = llm.get("azure_endpoint", default_azure_endpoint)
+            settings.LLM_AZURE_ENDPOINT = llm.get("azure_endpoint", "") # Must be in YAML
             settings.LLM_TIMEOUT = float(llm.get("timeout", 60.0))
             settings.LLM_MAX_RETRIES = int(llm.get("max_retries", 3))
             _parse_azure_config(settings, "LLM", settings.LLM_AZURE_ENDPOINT)
