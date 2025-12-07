@@ -19,4 +19,7 @@ class Session(Base):
     # Actually, we can just use class name string if we ensure backend loads properly.
     # Or import? Circular imports are risky in models. String is safer.
     # back_populates matches the one in TranscriptionBlock
+    # back_populates matches the one in TranscriptionBlock
     blocks = relationship("TranscriptionBlock", back_populates="session", cascade="all, delete-orphan", order_by="TranscriptionBlock.created_at")
+    
+    revisions = relationship("EditorRevision", back_populates="session", cascade="all, delete-orphan", order_by="desc(EditorRevision.created_at)")

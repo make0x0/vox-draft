@@ -18,7 +18,8 @@ import type { TaskStatus } from './components/NotificationManager';
 import type {
   PromptTemplate,
   ApiConfig,
-  VocabularyItem
+  VocabularyItem,
+  EditorRevision
 } from './types';
 
 // --- Dummy Data Removed ---
@@ -50,17 +51,16 @@ export default function App() {
   } = useAudioRecorder();
 
   // Fetch blocks when session selected
+  // Fetch blocks when session selected
   useEffect(() => {
     if (selectedSessionId) {
       fetchBlocks(selectedSessionId);
-      // Also reset editor content (or fetch editor content if persisted)
-      const session = sessions.find(s => s.id === selectedSessionId);
-      setEditorContent(`# ${session?.summary || 'Session'}\n...`);
+      // Editor content is now handled by handleDisplaySession / Revision loading
     } else {
       setBlocks([]);
-      setEditorContent("");
+      // setEditorContent(""); // Handled by handleNewSession / logic
     }
-  }, [selectedSessionId, fetchBlocks, sessions]); // Added sessions to dep array for title update
+  }, [selectedSessionId, fetchBlocks]); // Removed sessions from dep array if not needed
 
   // UI State
   const [isPromptRecording] = useState(false);
@@ -396,8 +396,11 @@ export default function App() {
       source: 'system'
     }]);
 
+    let generatedText = "";
+
     try {
       await generate(messages, (chunk) => {
+        generatedText += chunk;
         setEditorContent(prev => prev + chunk);
       }, (statusMsg, type) => {
         // Handle status updates
@@ -411,6 +414,10 @@ export default function App() {
 
       // Success completion (if not already error)
       setTasks(prev => prev.map(t => t.id === llmTaskId ? { ...t, type: 'success', message: '生成が完了しました', endTime: Date.now() } : t));
+
+      // Auto-save revision
+      const finalContent = editorContent + `\n\n## AI生成結果\n` + generatedText;
+      handleSaveRevision("AI Generation Result", finalContent);
 
     } catch (err) {
       console.error("LLM Generation Error caught in App.tsx:", err);
@@ -468,8 +475,104 @@ export default function App() {
     }
   };
 
+  // Revisions State
+  const [revisions, setRevisions] = useState<EditorRevision[]>([]);
+  const [currentRevisionIndex, setCurrentRevisionIndex] = useState(-1);
+
+  const fetchRevisions = async (sessionId: string) => {
+    try {
+      const res = await client.get(`/api/sessions/${sessionId}/revisions`);
+      setRevisions(res.data);
+      return res.data;
+    } catch (err) {
+      console.error("Failed to fetch revisions", err);
+      return [];
+    }
+  };
+
+  const handleSaveRevision = async (note?: string, contentOverride?: string) => {
+    if (!selectedSessionId) return;
+    try {
+      const res = await client.post(`/api/sessions/${selectedSessionId}/revisions`, {
+        content: contentOverride || editorContent,
+        note: note || "Manual Save"
+      });
+      setRevisions(prev => [res.data, ...prev]);
+      setCurrentRevisionIndex(0); // Switch to the newly created revision (latest)
+      addNotification("success", "リビジョンを保存しました");
+    } catch (err) {
+      console.error(err);
+      addNotification("error", "保存に失敗しました");
+    }
+  };
+
+  const handleLoadRevision = (index: number) => {
+    if (index < -1 || index >= revisions.length) return;
+    setCurrentRevisionIndex(index);
+    // If index is -1, it means "Head". Logic depends on whether we want to allow editing "dirty" head.
+    // For now, if we go back to -1, we might ideally want to clear editor or keep last state?
+    // Actually, "Latest (Unsaved)" implies the state BEFORE we started browsing.
+    // But we are overwriting `editorContent` when we browse.
+    // So "Unsaved" state is lost unless we saved it?
+    // Let's assume user saves before browsing if they care.
+    // OR: revision 0 IS the latest saved.
+    // Let's just load content of revisions[index].
+    const rev = revisions[index];
+    if (rev) {
+      setEditorContent(rev.content);
+    }
+  };
+
+  const handleDeleteRevision = async () => {
+    if (currentRevisionIndex < 0) return;
+    const rev = revisions[currentRevisionIndex];
+    if (!rev) return;
+    if (!confirm("このリビジョンを削除しますか？")) return;
+
+    try {
+      await client.delete(`/api/revisions/${rev.id}`);
+      const newRevisions = revisions.filter(r => r.id !== rev.id);
+      setRevisions(newRevisions);
+
+      // Navigate to nearest available
+      if (newRevisions.length > 0) {
+        const newIndex = Math.min(currentRevisionIndex, newRevisions.length - 1);
+        setCurrentRevisionIndex(newIndex);
+        setEditorContent(newRevisions[newIndex].content);
+      } else {
+        setCurrentRevisionIndex(-1);
+        setEditorContent("");
+      }
+      addNotification("success", "リビジョンを削除しました");
+    } catch (err) {
+      addNotification("error", "削除に失敗しました");
+    }
+  };
+
+  const handleDisplaySession = async (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+
+    // Fetch Revisions
+    const revs = await fetchRevisions(sessionId);
+    if (revs && revs.length > 0) {
+      // Load latest revision by default
+      setRevisions(revs);
+      setEditorContent(revs[0].content);
+      setCurrentRevisionIndex(0);
+    } else {
+      setRevisions([]);
+      setCurrentRevisionIndex(-1);
+      // Fallback to summary logic if no revisions
+      const session = sessions.find(s => s.id === sessionId);
+      setEditorContent(`# ${session?.summary || 'Session'}\n...`);
+    }
+  };
+
   const handleNewSession = () => {
     setSelectedSessionId(null);
+    setRevisions([]);
+    setCurrentRevisionIndex(-1);
+    setEditorContent("# New Session...");
   };
 
   const handleGenerateTitle = async (sessionId: string): Promise<string> => {
@@ -534,9 +637,10 @@ export default function App() {
       <NotificationManager tasks={tasks} onDismiss={handleDismissTask} config={systemConfig.notifications} />
 
       {/* --- Left Pane: Sidebar --- */}
+      {/* --- Left Pane: Sidebar --- */}
       <Sidebar
         history={sessions}
-        onSelectSession={(id) => setSelectedSessionId(id)}
+        onSelectSession={handleDisplaySession}
         onDeleteSessions={handleDeleteSessions}
         onUpdateSessionTitle={handleUpdateSessionTitle}
         onGenerateTitle={handleGenerateTitle}
@@ -665,6 +769,11 @@ export default function App() {
             content={editorContent}
             setContent={setEditorContent}
             width={editorWidth}
+            revisions={revisions}
+            currentRevisionIndex={currentRevisionIndex}
+            onLoadRevision={handleLoadRevision}
+            onSaveRevision={() => handleSaveRevision("Manual Save")}
+            onDeleteRevision={handleDeleteRevision}
           />
         </div>
 

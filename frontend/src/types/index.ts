@@ -44,3 +44,11 @@ export interface ChatMessage {
     role: 'system' | 'user' | 'assistant';
     content: string;
 }
+
+export interface EditorRevision {
+    id: string;
+    session_id: string;
+    content: string;
+    note?: string;
+    created_at: string;
+}

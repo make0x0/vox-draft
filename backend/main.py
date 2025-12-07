@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.endpoints import audio, stt, llm, data, sessions, templates, vocabulary
+from app.api.endpoints import audio, stt, llm, data, sessions, templates, vocabulary, revisions
 
 app = FastAPI(title="Vox Backend")
 
@@ -25,6 +25,7 @@ from app.api.endpoints import system
 app.include_router(system.router, prefix="/api/system", tags=["system"])
 app.include_router(templates.router, prefix="/api/templates", tags=["templates"])
 app.include_router(vocabulary.router, prefix="/api/vocabulary", tags=["vocabulary"])
+app.include_router(revisions.router, prefix="/api", tags=["revisions"])
 
 @app.get("/")
 def read_root():
