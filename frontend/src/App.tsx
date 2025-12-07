@@ -466,6 +466,47 @@ export default function App() {
     return data.title;
   };
 
+  // ... imports
+
+  // Resizing State
+  const [sidebarWidth, setSidebarWidth] = useState(300);
+  const [editorWidth, setEditorWidth] = useState(350);
+
+  const isDraggingSidebar = useRef(false);
+  const isDraggingEditor = useRef(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingSidebar.current) {
+        setSidebarWidth(Math.max(200, Math.min(600, e.clientX)));
+        document.body.style.cursor = 'col-resize';
+        e.preventDefault();
+      } else if (isDraggingEditor.current) {
+        // Calculate width from right edge
+        const newWidth = window.innerWidth - e.clientX;
+        setEditorWidth(Math.max(250, Math.min(800, newWidth)));
+        document.body.style.cursor = 'col-resize';
+        e.preventDefault();
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingSidebar.current || isDraggingEditor.current) {
+        isDraggingSidebar.current = false;
+        isDraggingEditor.current = false;
+        document.body.style.cursor = 'default';
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   return (
     <div className="flex h-screen w-full bg-gray-100 text-gray-800 font-sans overflow-hidden relative">
       <NotificationManager tasks={tasks} onDismiss={handleDismissTask} config={systemConfig.notifications} />
@@ -479,6 +520,13 @@ export default function App() {
         onGenerateTitle={handleGenerateTitle}
         onOpenSettings={() => setShowSettings(true)}
         onNewSession={handleNewSession}
+        width={sidebarWidth}
+      />
+
+      {/* Resize Handle Left */}
+      <div
+        className="w-1 hover:w-1.5 bg-gray-200 hover:bg-blue-400 cursor-col-resize z-30 transition-colors flex-shrink-0"
+        onMouseDown={() => { isDraggingSidebar.current = true; }}
       />
 
       {/* --- Main Area --- */}
@@ -486,7 +534,7 @@ export default function App() {
         <div className="flex-1 flex min-h-0">
 
           {/* --- Center Pane: Transcription List & Recording --- */}
-          <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200 bg-white relative">
+          <div className="flex-1 flex flex-col min-w-0 bg-white relative">
             <div className="flex-1 overflow-hidden flex flex-col">
               {(selectedSessionId && !blocksLoading) ? (
                 <TranscriptionList
@@ -584,18 +632,23 @@ export default function App() {
             </div>
           </div>
 
+          {/* Resize Handle Right */}
+          <div
+            className="w-1 hover:w-1.5 bg-gray-200 hover:bg-blue-400 cursor-col-resize z-30 transition-colors flex-shrink-0"
+            onMouseDown={() => { isDraggingEditor.current = true; }}
+          />
+
           {/* --- Right Pane: Editor --- */}
           <Editor
             content={editorContent}
             setContent={setEditorContent}
+            width={editorWidth}
           />
         </div>
 
         {/* --- Footer Control (LLM Only) --- */}
         <footer className="h-auto border-t border-gray-200 bg-white p-4 shadow-lg z-10 flex flex-col gap-3">
           <div className="flex items-center gap-4">
-            {/* Left side spacer where Mic used to be - optional, or just remove */}
-
             <div className="flex-1 flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <select className="text-sm border border-gray-300 rounded px-2 py-1 bg-gray-50 hover:bg-gray-100 focus:outline-none text-gray-700" value={selectedFooterTemplateId} onChange={handleFooterTemplateSelect}>
@@ -606,7 +659,7 @@ export default function App() {
               </div>
               <div className="flex gap-2 w-full">
                 <div className="relative flex-1 flex">
-                  <textarea className="w-full border border-gray-300 rounded-l-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-h-[42px] max-h-[80px] resize-y" placeholder="AIへの指示・プロンプトを入力..." value={promptText} onChange={(e) => setPromptText(e.target.value)} />
+                  <textarea className="w-full border border-gray-300 rounded-l-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-h-[42px] max-h-[400px] resize-y" placeholder="AIへの指示・プロンプトを入力..." value={promptText} onChange={(e) => setPromptText(e.target.value)} />
                   <button onClick={handlePromptRecordToggle} className={`px-3 border-y border-r border-gray-300 rounded-r-lg hover:bg-gray-50 flex items-center justify-center transition-colors ${isPromptRecording ? 'text-red-500 bg-red-50 border-red-200' : 'text-gray-500'}`} title="音声で指示を追加"><Mic size={18} className={isPromptRecording ? "animate-pulse" : ""} /></button>
                 </div>
                 <button onClick={handleRunLLM} disabled={isGenerating} className={`bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-lg font-medium shadow-sm flex items-center gap-2 transition-colors h-auto ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}>

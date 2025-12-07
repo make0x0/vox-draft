@@ -6,13 +6,17 @@ import remarkGfm from 'remark-gfm';
 interface EditorProps {
     content: string;
     setContent: (content: string) => void;
+    width?: number;
 }
 
-export const Editor: React.FC<EditorProps> = ({ content, setContent }) => {
+export const Editor: React.FC<EditorProps> = ({ content, setContent, width = 350 }) => {
     const [editorMode, setEditorMode] = useState<'write' | 'preview'>('write');
 
     return (
-        <section className="flex-1 flex flex-col bg-white min-w-[300px]">
+        <section
+            className="flex flex-col bg-white flex-shrink-0"
+            style={{ width: width }}
+        >
             <div className="p-2 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                 <div className="flex gap-1 bg-gray-200 p-1 rounded">
                     <button onClick={() => setEditorMode('write')} className={`px-3 py-1 text-xs rounded flex items-center gap-1 ${editorMode === 'write' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Edit3 size={12} /> 編集</button>
