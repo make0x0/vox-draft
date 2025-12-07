@@ -172,18 +172,34 @@ export default function App() {
     // Build context from blocks
     // If blocks selected, use them. Else use all? For now use checked blocks or all if none checked.
     const checkedBlocks = blocks.filter(b => b.isChecked);
+
+    // User requested checked blocks concatenated in order. 
+    // `blocks` is already sorted by backend response (usually creation time or index).
+    // If user wants specific drag-order, `blocks` state should reflect that.
     const targetBlocks = checkedBlocks.length > 0 ? checkedBlocks : blocks;
 
-    if (targetBlocks.length === 0) {
-      alert("対象となる文字起こしブロックがありません。");
+    if (targetBlocks.length === 0 && !editorContent.trim() && !extraPrompt.trim()) {
+      alert("コンテキスト（文字起こし、エディタ、またはプロンプト）が空です。");
       return;
     }
 
     const contextText = targetBlocks.map(b => `- ${b.text}`).join('\n');
 
+    // Construct the full prompt content including Editor content
+    const fullUserContent = `
+[Current Editor Content]
+${editorContent}
+
+[Transcription Context]
+${contextText}
+
+[Instruction]
+${extraPrompt}
+`.trim();
+
     const messages: any[] = [
       { role: "system", content: systemPrompt || "あなたは優秀なアシスタントです。" },
-      { role: "user", content: `以下のテキストを元に処理を行ってください。\n\n[Context]\n${contextText}\n\n[Instruction]\n${extraPrompt}` }
+      { role: "user", content: fullUserContent }
     ];
 
     // Reset or prepare editor content
