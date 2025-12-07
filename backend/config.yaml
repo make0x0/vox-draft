@@ -1,0 +1,14 @@
+system:
+  server:
+    host: "0.0.0.0"
+    port: 8000
+    allowed_origins: ["http://localhost:5173"]
+
+  stt:
+    openai_api_url: "https://api.openai.com/v1/audio/transcriptions"
+    # Set env var OPENAI_API_KEY
+
+  llm:
+    openai_api_url: "https://api.openai.com/v1/chat/completions"
+    model: "gpt-4o"
+    # Set env var OPENAI_API_KEY

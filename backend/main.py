@@ -1,0 +1,27 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.api.endpoints import audio, stt, llm, data, sessions
+
+app = FastAPI(title="Vox Backend")
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Routers
+app.include_router(audio.router, prefix="/api/audio", tags=["audio"])
+app.include_router(stt.router, prefix="/api/stt", tags=["stt"])
+app.include_router(llm.router, prefix="/api/llm", tags=["llm"])
+app.include_router(data.router, prefix="/api/data", tags=["data"])
+app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
+
+@app.get("/")
+def read_root():
+    return {"Hello": "Vox Backend API"}
+
