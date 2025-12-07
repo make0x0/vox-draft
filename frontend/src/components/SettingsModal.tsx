@@ -11,6 +11,7 @@ interface SettingsModalProps {
     apiConfig: { stt: ApiConfig, llm: ApiConfig };
     generalSettings: { language: string; encoding: string; lineEnding: string; promptStructure: string };
     setGeneralSettings: (settings: { language: string; encoding: string; lineEnding: string; promptStructure: string }) => void;
+    onDataUpdated?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -21,7 +22,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setVocabulary,
     apiConfig,
     generalSettings,
-    setGeneralSettings
+    setGeneralSettings,
+    onDataUpdated
 }) => {
     const [settingsTab, setSettingsTab] = useState<'general' | 'api' | 'prompts' | 'vocab' | 'data'>('general');
     // const [generalSettings, setGeneralSettings] = useState({ language: 'ja', encoding: 'UTF-8', lineEnding: 'LF' }); // Removed local state
@@ -227,7 +229,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             }
 
             alert(`インポート成功: ${res.imported_count}件のセッションを追加・更新しました。`);
-            window.location.reload();
+
+            // Trigger refresh
+            if (onDataUpdated) {
+                onDataUpdated();
+                setImportAnalysis(null); // Clear wizard
+                if (importInputRef.current) importInputRef.current.value = '';
+            } else {
+                window.location.reload();
+            }
 
         } catch (err: any) {
             console.error(err);
@@ -267,9 +277,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             const data = await response.json();
             alert(`削除完了: ${data.deleted_count}件のセッションを削除しました。`);
 
-            // Should probably reload page or update session list, but modal remains open.
-            // Ideally we'd trigger a refresh of sessions in parent. 
-            // For now user can manually reload if needed, or we close modal.
+            if (onDataUpdated) {
+                onDataUpdated();
+            }
 
         } catch (err: any) {
             console.error(err);

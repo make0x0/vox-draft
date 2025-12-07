@@ -406,6 +406,7 @@ export default function App() {
           apiConfig={mockApiConfig}
           generalSettings={generalSettings}
           setGeneralSettings={setGeneralSettings}
+          onDataUpdated={fetchSessions}
         />
       )}
     </div>
