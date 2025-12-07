@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     STT_API_URL: str = ""
     LLM_API_URL: str = ""
     LLM_MODEL: str = "gpt-4o"
+    TIMEZONE: str = "UTC"
+    DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
 
     class Config:
         env_file = ".env"
@@ -30,6 +32,10 @@ def load_config():
             settings.STT_API_URL = stt.get("openai_api_url", "")
             settings.LLM_API_URL = llm.get("openai_api_url", "")
             settings.LLM_MODEL = llm.get("model", "gpt-4o")
+            
+            app_config = system.get("app", {})
+            settings.TIMEZONE = app_config.get("timezone", "UTC")
+            settings.DATE_FORMAT = app_config.get("date_format", "%Y-%m-%d %H:%M:%S")
 
 settings = Settings()
 load_config()

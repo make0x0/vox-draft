@@ -4,6 +4,10 @@ system:
     port: 8000
     allowed_origins: ["http://localhost:5173"]
 
+  app:
+    timezone: "Asia/Tokyo"
+    date_format: "%Y/%m/%d %H:%M"
+
   stt:
     openai_api_url: "https://api.openai.com/v1/audio/transcriptions"
     # Set env var OPENAI_API_KEY

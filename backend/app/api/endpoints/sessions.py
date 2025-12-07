@@ -49,14 +49,14 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
     
     return session
 
-from datetime import datetime, timedelta, timezone
-
-# JST timezone
-JST = timezone(timedelta(hours=9))
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from app.core.config import settings
 
 @router.post("/", response_model=session_schema.Session)
 def create_session(session_in: session_schema.SessionCreate, db: DBSession = Depends(get_db)):
-    default_title = f"Memo {datetime.now(JST).strftime('%Y/%m/%d %H:%M')}"
+    tz = ZoneInfo(settings.TIMEZONE)
+    default_title = f"Memo {datetime.now(tz).strftime(settings.DATE_FORMAT)}"
     db_session = SessionModel(
         title=session_in.title or default_title,
         summary=session_in.summary or ""
@@ -103,6 +103,8 @@ def create_block(session_id: str, block_in: block_schema.TranscriptionBlockBase,
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    tz = ZoneInfo(settings.TIMEZONE)
+
     db_block = BlockModel(
         session_id=session_id,
         type=block_in.type,
@@ -110,7 +112,7 @@ def create_block(session_id: str, block_in: block_schema.TranscriptionBlockBase,
         file_path=block_in.file_path,
         is_checked=block_in.is_checked,
         duration=block_in.duration,
-        timestamp=datetime.now(JST).strftime("%H:%M:%S")
+        timestamp=datetime.now(tz).strftime("%H:%M:%S")
     )
     db.add(db_block)
     db.commit()

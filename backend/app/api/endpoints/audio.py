@@ -1,11 +1,14 @@
 import os
 import shutil
 import uuid
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.base import get_db
 from app.models.session import Session as SessionModel
 from app.models.transcription_block import TranscriptionBlock
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -17,11 +20,11 @@ def upload_audio_file(
     session_id: str = Form(None), 
     db: Session = Depends(get_db)
 ):
+    tz = ZoneInfo(settings.TIMEZONE)
+    
     # Ensure session exists or create new
     if not session_id:
-        # JST timezone
-        JST = timezone(timedelta(hours=9))
-        new_session = SessionModel(title=f"Memo {datetime.now(JST).strftime('%Y/%m/%d %H:%M')}")
+        new_session = SessionModel(title=f"Memo {datetime.now(tz).strftime(settings.DATE_FORMAT)}")
         db.add(new_session)
         db.commit()
         db.refresh(new_session)
@@ -46,12 +49,10 @@ def upload_audio_file(
         type="audio",
         file_path=file_path,
         text="(Audio uploaded, waiting for transcription...)",
-        timestamp=datetime.now(JST).strftime("%H:%M:%S")
+        timestamp=datetime.now(tz).strftime("%H:%M:%S")
     )
     db.add(block)
     db.commit()
     db.refresh(block)
     
     return {"block_id": block.id, "session_id": session_id, "file_path": file_path}
-
-from datetime import datetime, timezone, timedelta

@@ -1,9 +1,10 @@
-import time
-import random
-from datetime import datetime
+from openai import OpenAI
+import os
 from sqlalchemy.orm import Session
 from app.models.transcription_block import TranscriptionBlock
 from app.core.config import settings
+
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 def transcribe_audio_task(block_id: str, db: Session):
     print(f"Starting transcription for block {block_id}")
@@ -15,26 +16,26 @@ def transcribe_audio_task(block_id: str, db: Session):
         return
 
     try:
-        # Simulation removed as requested
-        # process_duration = random.randint(3, 10)
-        # time.sleep(process_duration)
+        # Check if file exists
+        if not block.file_path or not os.path.exists(block.file_path):
+            raise FileNotFoundError(f"Audio file not found at {block.file_path}")
 
-        # Mocking occasional error removed
-        # if random.random() < 0.1: ...
-
-        # Success Result
-        result = "これはダミーの認識結果です。タイムアウトもエラー処理も正常に機能しています。"
+        print(f"Transcribing file: {block.file_path}")
+        
+        with open(block.file_path, "rb") as audio_file:
+             resp = client.audio.transcriptions.create(
+                model="whisper-1", 
+                file=audio_file
+            )
+        result = resp.text
         
         block.text = result
         db.add(block)
         db.commit()
         print(f"Transcription finished for block {block_id}")
-
+        
     except Exception as e:
-        print(f"Transcription failed for block {block_id}: {e}")
-        db.rollback() 
-        # Re-query block to ensure clean state or just use current if valid?
-        # Better safe:
-        block.text = f"[Error] 認識に失敗しました: {str(e)}"
-        db.add(block)
-        db.commit()
+         print(f"API Call failed: {e}")
+         block.text = f"[Error] 認識に失敗しました: {str(e)}"
+         db.add(block)
+         db.commit()
