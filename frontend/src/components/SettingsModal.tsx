@@ -9,8 +9,8 @@ interface SettingsModalProps {
     vocabulary: VocabularyItem[];
     setVocabulary: (v: VocabularyItem[]) => void;
     apiConfig: { stt: ApiConfig, llm: ApiConfig };
-    generalSettings: { language: string; encoding: string; lineEnding: string };
-    setGeneralSettings: (settings: { language: string; encoding: string; lineEnding: string }) => void;
+    generalSettings: { language: string; encoding: string; lineEnding: string; promptStructure: string };
+    setGeneralSettings: (settings: { language: string; encoding: string; lineEnding: string; promptStructure: string }) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -155,6 +155,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <select value={generalSettings.lineEnding} onChange={(e) => setGeneralSettings({ ...generalSettings, lineEnding: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
                                             <option value="LF">LF (\n)</option><option value="CRLF">CRLF (\r\n)</option>
                                         </select>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">プロンプト構成 (上級者向け)</label>
+                                        <div className="text-xs text-gray-500 mb-2">
+                                            利用可能なプレースホルダー:<br />
+                                            <code className="bg-gray-100 px-1 rounded">{`{system_prompt}`}</code>: 選択したテンプレート<br />
+                                            <code className="bg-gray-100 px-1 rounded">{`{user_prompt}`}</code>: プロンプト入力欄<br />
+                                            <code className="bg-gray-100 px-1 rounded">{`{checked_transcribe_list}`}</code>: 文字起こし結果<br />
+                                            <code className="bg-gray-100 px-1 rounded">{`{recentry_output}`}</code>: エディタの内容
+                                        </div>
+                                        <textarea
+                                            value={(generalSettings as any).promptStructure || `{system_prompt}\n\n{checked_transcribe_list}\n\n{recentry_output}\n\n{user_prompt}`}
+                                            onChange={(e) => setGeneralSettings({ ...generalSettings, promptStructure: e.target.value } as any)}
+                                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono h-64"
+                                            placeholder="プロンプトの構成を入力..."
+                                        />
                                     </div>
                                 </div>
                             </div>

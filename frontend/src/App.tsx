@@ -73,7 +73,12 @@ export default function App() {
   // Settings State
   const [templates, setTemplates] = useLocalStorage<PromptTemplate[]>('vox_templates', initialTemplates);
   const [vocabulary, setVocabulary] = useLocalStorage<VocabularyItem[]>('vox_vocabulary', initialVocabulary);
-  const [generalSettings, setGeneralSettings] = useLocalStorage('vox_general_settings', { language: 'ja', encoding: 'UTF-8', lineEnding: 'LF' });
+  const [generalSettings, setGeneralSettings] = useLocalStorage('vox_general_settings', {
+    language: 'ja',
+    encoding: 'UTF-8',
+    lineEnding: 'LF',
+    promptStructure: `{system_prompt}\n\n[Context]\n{checked_transcribe_list}\n\n[Current Content]\n{recentry_output}\n\n[Instruction]\n{user_prompt}`
+  });
 
   // Prompt Input State
   const [promptText, setPromptText] = useState("");
@@ -185,20 +190,29 @@ export default function App() {
 
     const contextText = targetBlocks.map(b => `- ${b.text}`).join('\n');
 
-    // Construct the full prompt content including Editor content
-    const fullUserContent = `
-[Current Editor Content]
-${editorContent}
+    // Construct the full prompt content using configurable structure
+    const structure = (generalSettings as any).promptStructure || `{system_prompt}\n\n[Context]\n{checked_transcribe_list}\n\n[Current Content]\n{recentry_output}\n\n[Instruction]\n{user_prompt}`;
 
-[Transcription Context]
-${contextText}
+    const fullUserContent = structure
+      .replace('{system_prompt}', systemPrompt || "あなたは優秀なアシスタントです。") // Wait, system prompt is typically separate. If used here, should we clear system role?
+      // Actually, standard practice: system role instruction goes to "system" message.
+      // But user might want to embed it in user prompt?
+      // "System Prompt" usually implies independent system instruction.
+      // If user puts {system_prompt} in the structure, we embed it in USER message.
+      // For now let's keep the system message separate as "You are helpful assistant" or whatever, 
+      // AND allow embedding the specific template instruction in the user message if configured.
+      // BUT `systemPrompt` variable above IS the template content.
+      // If user wants to format it:
+      .replace('{user_prompt}', extraPrompt)
+      .replace('{checked_transcribe_list}', contextText)
+      .replace('{recentry_output}', editorContent);
 
-[Instruction]
-${extraPrompt}
-`.trim();
+    console.log("Full Prompt Constructed:", fullUserContent);
 
     const messages: any[] = [
-      { role: "system", content: systemPrompt || "あなたは優秀なアシスタントです。" },
+      // If the structure explicitly includes {system_prompt}, we might NOT want to duplicate it in the system role?
+      // Or we just use a generic system role.
+      { role: "system", content: "あなたは優秀なアシスタントです。" },
       { role: "user", content: fullUserContent }
     ];
 
