@@ -109,8 +109,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }
     };
 
-    const handleArchiveDelete = () => {
-        alert("Not implemented in mock.");
+    const handleArchiveDelete = async () => {
+        if (!archiveFrom || !archiveTo) {
+            alert("削除期間（開始日・終了日）を指定してください。");
+            return;
+        }
+
+        if (!confirm(`【警告】${archiveFrom} から ${archiveTo} までのデータを完全に削除します。\n\nこの操作は取り消せません。\nバックアップ（エクスポート）は済んでいますか？`)) {
+            return;
+        }
+
+        const deleteUrl = import.meta.env.VITE_API_BASE_URL
+            ? `${import.meta.env.VITE_API_BASE_URL}/api/data/archive`
+            : `http://localhost:8000/api/data/archive`;
+
+        try {
+            const params = new URLSearchParams({
+                start_date: archiveFrom,
+                end_date: archiveTo
+            });
+
+            const response = await fetch(`${deleteUrl}?${params.toString()}`, {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+                throw new Error(errorData.detail || "削除処理に失敗しました");
+            }
+
+            const data = await response.json();
+            alert(`削除完了: ${data.deleted_count}件のセッションを削除しました。`);
+
+            // Should probably reload page or update session list, but modal remains open.
+            // Ideally we'd trigger a refresh of sessions in parent. 
+            // For now user can manually reload if needed, or we close modal.
+
+        } catch (err: any) {
+            console.error(err);
+            alert(`削除エラー: ${err.message}`);
+        }
     };
 
     return (
