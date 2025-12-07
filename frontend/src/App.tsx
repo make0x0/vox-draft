@@ -36,10 +36,10 @@ const mockApiConfig: { stt: ApiConfig, llm: ApiConfig } = {
 
 export default function App() {
   // --- State ---
-  const { sessions, isLoading: sessionsLoading, fetchSessions, deleteSessions, updateSessionTitle, createSession } = useSessions();
+  const { sessions, fetchSessions, deleteSessions, updateSessionTitle, createSession } = useSessions();
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
-  const { blocks, isLoading: blocksLoading, addBlock, updateBlock, deleteBlock, addAudioBlock, fetchBlocks, setBlocks } = useBlocks();
+  const { blocks, isLoading: blocksLoading, addBlock, updateBlock, deleteBlock, fetchBlocks, setBlocks } = useBlocks();
 
   const [editorContent, setEditorContent] = useState<string>("# New Session...");
 
@@ -66,7 +66,7 @@ export default function App() {
   }, [selectedSessionId, fetchBlocks, sessions]); // Added sessions to dep array for title update
 
   // UI State
-  const [isPromptRecording, setIsPromptRecording] = useState(false);
+  const [isPromptRecording] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   // Settings State
@@ -81,11 +81,13 @@ export default function App() {
 
   // --- Text Block Handling ---
   const handleAddTextBlock = async () => {
+    console.log("handleAddTextBlock called");
     // If no session exists, create one first
     const currentSession = sessions.find(s => s.id === selectedSessionId);
     let targetSessionId = currentSession?.id;
 
     if (!targetSessionId) {
+      console.log("No session selected, creating new session...");
       try {
         const timestamp = new Date().toLocaleString('ja-JP', {
           year: 'numeric',
@@ -95,10 +97,12 @@ export default function App() {
           minute: '2-digit'
         });
         const newSession = await createSession(`Memo ${timestamp}`, "Text Note");
+        console.log("New session created:", newSession);
         targetSessionId = newSession.id;
         // Select the new session
         // The Sidebar expects a session ID, not a full object.
         setSelectedSessionId(newSession.id);
+        console.log("selectedSessionId set to:", newSession.id);
         // Also ensure sessions are re-fetched to include the new one
         await fetchSessions();
       } catch (error) {
@@ -109,7 +113,9 @@ export default function App() {
     }
 
     if (targetSessionId) {
-      addBlock(targetSessionId, "text", "");
+      console.log("Adding text block to session:", targetSessionId);
+      await addBlock(targetSessionId, "text", "");
+      console.log("Text block added");
     }
   };
 
@@ -285,8 +291,20 @@ export default function App() {
               onCheckBlock={handleBlockCheck}
             />
           ) : (
-            <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">
-              {blocksLoading ? <Loader2 className="animate-spin" /> : "セッションを選択またはファイルを作成してください"}
+            <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 text-gray-400 gap-4">
+              {blocksLoading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <>
+                  <p>セッションを選択またはファイルを作成してください</p>
+                  <button
+                    onClick={handleAddTextBlock}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Square size={16} /> テキストノートを作成
+                  </button>
+                </>
+              )}
             </div>
           )}
 

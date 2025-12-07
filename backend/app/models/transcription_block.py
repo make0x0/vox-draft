@@ -18,4 +18,5 @@ class TranscriptionBlock(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Establish relationship if needed, for cascading deletes etc.
-    # session = relationship("Session", back_populates="blocks")
+    # Establish relationship if needed, for cascading deletes etc.
+    session = relationship("Session", back_populates="blocks")
