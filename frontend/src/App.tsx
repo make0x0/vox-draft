@@ -7,6 +7,7 @@ import { useBlocks } from './hooks/useBlocks';
 import { useAudioRecorder } from './hooks/useAudioRecorder';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useLLM } from './hooks/useLLM';
+import { useSettingsData } from './hooks/useSettingsData';
 
 import { Sidebar } from './components/Sidebar';
 import { TranscriptionList } from './components/TranscriptionList';
@@ -20,17 +21,7 @@ import type {
   VocabularyItem
 } from './types';
 
-// --- Dummy Data (Templates & Vocab still dummy for now) ---
-const initialTemplates: PromptTemplate[] = [
-  { id: 't1', title: '要約 (リスト形式)', content: '以下のテキストを要約し、重要なポイントを箇条書きのリスト形式で出力してください。' },
-  { id: 't2', title: 'Markdownレポート', content: '以下の内容を元に、見出し、太字などを適切に使用したMarkdown形式のレポートを作成してください。' },
-  { id: 't3', title: 'メール返信作成', content: '以下の入力テキスト（相手からのメール文面など）に対し、適切な返信案を作成してください。丁寧なビジネスメールの口調でお願いします。' },
-];
-
-const initialVocabulary: VocabularyItem[] = [
-  { id: 'v1', reading: 'きょうぎかい', word: '協議会' },
-  { id: 'v2', reading: 'ぷろじぇくとあるふぁ', word: 'Project Alpha' },
-];
+// --- Dummy Data Removed ---
 
 export default function App() {
   // --- State ---
@@ -38,6 +29,11 @@ export default function App() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   const { blocks, isLoading: blocksLoading, addBlock, updateBlock, deleteBlock, fetchBlocks, setBlocks } = useBlocks();
+
+  // Settings Data Hook (Persistence)
+  const settingsData = useSettingsData();
+  // Unwrap for cleaner usage if desired, or pass settingsData directly
+  const { templates, vocabulary, setTemplates: _setTemplates, setVocabulary: _setVocabulary, ...settingsHandlers } = settingsData;
 
   const [editorContent, setEditorContent] = useState<string>("# New Session...");
 
@@ -211,9 +207,6 @@ export default function App() {
   };
 
   // Settings State
-  // Settings State
-  const [templates, setTemplates] = useLocalStorage<PromptTemplate[]>('vox_templates', initialTemplates);
-  const [vocabulary, setVocabulary] = useLocalStorage<VocabularyItem[]>('vox_vocabulary', initialVocabulary);
   const [generalSettings, setGeneralSettings] = useLocalStorage('vox_general_settings', {
     language: 'ja',
     encoding: 'UTF-8',
@@ -673,9 +666,15 @@ export default function App() {
         <SettingsModal
           onClose={() => setShowSettings(false)}
           templates={templates}
-          setTemplates={setTemplates}
           vocabulary={vocabulary}
-          setVocabulary={setVocabulary}
+          // Pass Persistence Handlers
+          onAddTemplate={settingsData.addTemplate}
+          onUpdateTemplate={settingsData.updateTemplate}
+          onDeleteTemplate={settingsData.deleteTemplate}
+          onAddVocab={settingsData.addVocabularyItem}
+          onUpdateVocab={settingsData.updateVocabularyItem}
+          onDeleteVocab={settingsData.deleteVocabularyItem}
+
           apiConfig={{ stt: systemConfig.stt, llm: systemConfig.llm }}
           generalSettings={generalSettings}
           setGeneralSettings={setGeneralSettings}

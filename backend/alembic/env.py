@@ -8,7 +8,9 @@ from alembic import context
 from app.core.config import settings
 from app.db.base import Base
 from app.models.session import Session
+from app.models.session import Session
 from app.models.transcription_block import TranscriptionBlock
+from app.models.settings import PromptTemplate, VocabularyItem
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

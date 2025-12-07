@@ -2,12 +2,19 @@ import React, { useState } from 'react';
 import { Settings, Save, X, Plus, Trash2, Database, Download, Upload, HardDrive, FileArchive } from 'lucide-react';
 import type { PromptTemplate, VocabularyItem, ApiConfig } from '../types';
 
-interface SettingsModalProps {
+export interface SettingsModalProps {
     onClose: () => void;
+    // Data
     templates: PromptTemplate[];
-    setTemplates: (t: PromptTemplate[]) => void;
     vocabulary: VocabularyItem[];
-    setVocabulary: (v: VocabularyItem[]) => void;
+    // Persistence Handlers
+    onAddTemplate: (t: { title: string; content: string }) => Promise<any>;
+    onUpdateTemplate: (t: PromptTemplate) => Promise<any>;
+    onDeleteTemplate: (id: string) => Promise<void>;
+    onAddVocab: (v: { reading: string; word: string }) => Promise<any>;
+    onUpdateVocab: (v: VocabularyItem) => Promise<any>;
+    onDeleteVocab: (id: string) => Promise<void>;
+
     apiConfig: { stt: ApiConfig, llm: ApiConfig };
     generalSettings: { language: string; encoding: string; lineEnding: string; promptStructure: string };
     setGeneralSettings: (settings: { language: string; encoding: string; lineEnding: string; promptStructure: string }) => void;
@@ -17,17 +24,33 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({
     onClose,
     templates,
-    setTemplates,
     vocabulary,
-    setVocabulary,
+    onAddTemplate,
+    onUpdateTemplate,
+    onDeleteTemplate,
+    onAddVocab,
+    onUpdateVocab,
+    onDeleteVocab,
     apiConfig,
     generalSettings,
     setGeneralSettings,
     onDataUpdated
 }) => {
     const [settingsTab, setSettingsTab] = useState<'general' | 'api' | 'prompts' | 'vocab' | 'data'>('general');
-    // const [generalSettings, setGeneralSettings] = useState({ language: 'ja', encoding: 'UTF-8', lineEnding: 'LF' }); // Removed local state
-    const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(templates[0]?.id || null);
+    // Local editing state for Template
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+    const [editingTemplate, setEditingTemplate] = useState<{ title: string; content: string } | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Sync editing state when selection changes
+    React.useEffect(() => {
+        if (selectedTemplateId) {
+            const t = templates.find(temp => temp.id === selectedTemplateId);
+            if (t) setEditingTemplate({ title: t.title, content: t.content });
+        } else {
+            setEditingTemplate(null);
+        }
+    }, [selectedTemplateId, templates]);
 
     // Data Management
     // Initialize dates to today
@@ -53,26 +76,71 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const importInputRef = React.useRef<HTMLInputElement>(null);
 
     const handleTemplateChange = (field: 'title' | 'content', value: string) => {
-        if (!selectedTemplateId) return;
-        setTemplates(templates.map(t => t.id === selectedTemplateId ? { ...t, [field]: value } : t));
+        if (!editingTemplate) return;
+        setEditingTemplate({ ...editingTemplate, [field]: value });
     };
 
-    const addNewTemplate = () => {
-        const newId = `new_${Date.now()}`;
-        setTemplates([...templates, { id: newId, title: '新規テンプレート', content: '' }]);
-        setSelectedTemplateId(newId);
+    const addNewTemplate = async () => {
+        setIsSaving(true);
+        try {
+            const newT = await onAddTemplate({ title: '新規テンプレート', content: '' });
+            setSelectedTemplateId(newT.id);
+        } catch (e) {
+            alert("追加に失敗しました");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const deleteTemplate = (id: string) => {
-        setTemplates(templates.filter(t => t.id !== id));
-        if (selectedTemplateId === id) setSelectedTemplateId(null);
+    const saveCurrentTemplate = async () => {
+        if (!selectedTemplateId || !editingTemplate) return;
+        setIsSaving(true);
+        try {
+            await onUpdateTemplate({ id: selectedTemplateId, ...editingTemplate });
+            // alert("保存しました"); // Optional feedback
+        } catch (e) {
+            console.error(e);
+            alert("保存に失敗しました");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const addVocab = () => setVocabulary([...vocabulary, { id: `v_${Date.now()}`, reading: '', word: '' }]);
-    const updateVocab = (id: string, field: 'reading' | 'word', value: string) => {
-        setVocabulary(vocabulary.map(v => v.id === id ? { ...v, [field]: value } : v));
+    const deleteCurrentTemplate = async (id: string) => {
+        if (!confirm("本当に削除しますか？")) return;
+        setIsSaving(true);
+        try {
+            await onDeleteTemplate(id);
+            setSelectedTemplateId(null);
+        } catch (e) {
+            alert("削除に失敗しました");
+        } finally {
+            setIsSaving(false);
+        }
     };
-    const deleteVocab = (id: string) => setVocabulary(vocabulary.filter(v => v.id !== id));
+
+    const addVocab = async () => {
+        try {
+            await onAddVocab({ reading: '', word: '' });
+        } catch (e) { alert("追加に失敗しました"); }
+    };
+
+    const handleVocabUpdate = async (id: string, field: 'reading' | 'word', value: string) => {
+        // Find current item
+        const item = vocabulary.find(v => v.id === id);
+        if (!item) return;
+        if (item[field] === value) return; // No change
+
+        try {
+            await onUpdateVocab({ ...item, [field]: value });
+        } catch (e) { console.error(e); }
+    };
+
+    const deleteVocabItem = async (id: string) => {
+        try {
+            await onDeleteVocab(id);
+        } catch (e) { alert("削除に失敗しました"); }
+    };
 
     const handleExport = async () => {
         if (!exportFrom || !exportTo) {
@@ -223,8 +291,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             // Update Client Settings if imported
             if (shouldImportSettings && importAnalysis.settings_preview) {
                 const s = importAnalysis.settings_preview;
-                if (s.templates) setTemplates(s.templates);
-                if (s.vocabulary) setVocabulary(s.vocabulary);
+                if (s.templates) console.log("Templates imported (refresh required)");
+                if (s.vocabulary) console.log("Vocabulary imported (refresh required)");
                 if (s.generalSettings) setGeneralSettings(s.generalSettings);
             }
 
@@ -387,11 +455,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     </div>
                                 </div>
                                 <div className="flex-1 flex flex-col gap-4">
-                                    {selectedTemplateId ? (
+                                    {selectedTemplateId && editingTemplate ? (
                                         <>
-                                            <div><label className="block text-sm font-medium text-gray-700 mb-1">テンプレート名</label><input type="text" className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" value={templates.find(t => t.id === selectedTemplateId)?.title || ''} onChange={(e) => handleTemplateChange('title', e.target.value)} /></div>
-                                            <div className="flex-1 flex flex-col"><label className="block text-sm font-medium text-gray-700 mb-1">プロンプト内容</label><textarea className="flex-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 font-mono" value={templates.find(t => t.id === selectedTemplateId)?.content || ''} onChange={(e) => handleTemplateChange('content', e.target.value)} /></div>
-                                            <div className="flex justify-end pt-2"><button onClick={() => deleteTemplate(selectedTemplateId)} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1"><Trash2 size={14} /> 削除</button></div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">テンプレート名</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                                                        value={editingTemplate.title}
+                                                        onChange={(e) => handleTemplateChange('title', e.target.value)}
+                                                        disabled={isSaving}
+                                                    />
+                                                    <button onClick={saveCurrentTemplate} disabled={isSaving} className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 flex items-center gap-1">
+                                                        <Save size={14} /> 保存
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 flex flex-col">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">プロンプト内容</label>
+                                                <textarea
+                                                    className="flex-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 font-mono"
+                                                    value={editingTemplate.content}
+                                                    onChange={(e) => handleTemplateChange('content', e.target.value)}
+                                                    disabled={isSaving}
+                                                />
+                                            </div>
+                                            <div className="flex justify-end pt-2">
+                                                <button onClick={() => deleteCurrentTemplate(selectedTemplateId)} disabled={isSaving} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1">
+                                                    <Trash2 size={14} /> 削除
+                                                </button>
+                                            </div>
                                         </>
                                     ) : <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">左側から選択してください</div>}
                                 </div>
@@ -411,9 +505,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <tbody className="divide-y divide-gray-200">
                                             {vocabulary.map(v => (
                                                 <tr key={v.id} className="bg-white">
-                                                    <td className="p-2"><input type="text" className="w-full border border-gray-300 rounded px-2 py-1.5 outline-none" value={v.reading} onChange={(e) => updateVocab(v.id, 'reading', e.target.value)} /></td>
-                                                    <td className="p-2"><input type="text" className="w-full border border-gray-300 rounded px-2 py-1.5 outline-none" value={v.word} onChange={(e) => updateVocab(v.id, 'word', e.target.value)} /></td>
-                                                    <td className="p-2 text-center"><button onClick={() => deleteVocab(v.id)} className="text-gray-400 hover:text-red-500 p-1 rounded"><Trash2 size={16} /></button></td>
+                                                    <td className="p-2">
+                                                        <input
+                                                            type="text"
+                                                            className="w-full border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
+                                                            defaultValue={v.reading}
+                                                            onBlur={(e) => handleVocabUpdate(v.id, 'reading', e.target.value)}
+                                                        />
+                                                    </td>
+                                                    <td className="p-2">
+                                                        <input
+                                                            type="text"
+                                                            className="w-full border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-500"
+                                                            defaultValue={v.word}
+                                                            onBlur={(e) => handleVocabUpdate(v.id, 'word', e.target.value)}
+                                                        />
+                                                    </td>
+                                                    <td className="p-2 text-center">
+                                                        <button onClick={() => deleteVocabItem(v.id)} className="text-gray-400 hover:text-red-500 p-1 rounded">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>

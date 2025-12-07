@@ -19,7 +19,7 @@ system:
       duration: 8000
 
   stt:
-    provider: "openai" # "openai" or "azure"
+    provider: "azure" # "openai" or "azure"
     openai_api_url: "https://api.openai.com/v1/audio/transcriptions"
     
     # Azure Configuration (if provider is "azure")
@@ -32,7 +32,7 @@ system:
     max_retries: 3
 
   llm:
-    provider: "openai" # "openai" or "azure"
+    provider: "azure" # "openai" or "azure"
     openai_api_url: "https://api.openai.com/v1/chat/completions"
     model: "gpt-4o"
     
