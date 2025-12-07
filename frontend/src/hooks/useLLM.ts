@@ -78,6 +78,7 @@ export const useLLM = (): UseLLMReturn => {
             } else {
                 console.error("LLM Generation Error:", err);
                 setError(err.message || 'Failed to generate text');
+                throw err; // Re-throw so caller can handle it
             }
         } finally {
             setIsGenerating(false);

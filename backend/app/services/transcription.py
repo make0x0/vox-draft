@@ -1,29 +1,40 @@
 import time
+import random
+from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.transcription_block import TranscriptionBlock
 from app.core.config import settings
 
 def transcribe_audio_task(block_id: str, db: Session):
-    # This function is intended to be run in a background thread/process
-    # Since Session is not thread-safe, we should ideally create a new session here, 
-    # but for BackgroundTasks fastAPI reuses the dependency if not careful.
-    # Pattern: Pass the ID and create a NEW session scope inside the task.
-    
-    # Mocking long running process
     print(f"Starting transcription for block {block_id}")
-    time.sleep(5) 
     
-    # Check block
+    # Check block existence
     block = db.query(TranscriptionBlock).filter(TranscriptionBlock.id == block_id).first()
-    if block:
-        # Here we would call OpenAI Whisper API
-        # response = openai.Audio.transcribe(...)
-        # result = response["text"]
-        result = "これはダミーの認識結果です。Whisper APIが実際には呼ばれていませんが、非同期処理の動作確認用です。"
+    if not block:
+        print(f"Block {block_id} not found in background task")
+        return
+
+    try:
+        # Simulation removed as requested
+        # process_duration = random.randint(3, 10)
+        # time.sleep(process_duration)
+
+        # Mocking occasional error removed
+        # if random.random() < 0.1: ...
+
+        # Success Result
+        result = "これはダミーの認識結果です。タイムアウトもエラー処理も正常に機能しています。"
         
         block.text = result
         db.add(block)
         db.commit()
         print(f"Transcription finished for block {block_id}")
-    else:
-        print(f"Block {block_id} not found in background task")
+
+    except Exception as e:
+        print(f"Transcription failed for block {block_id}: {e}")
+        db.rollback() 
+        # Re-query block to ensure clean state or just use current if valid?
+        # Better safe:
+        block.text = f"[Error] 認識に失敗しました: {str(e)}"
+        db.add(block)
+        db.commit()

@@ -11,6 +11,8 @@ import { Sidebar } from './components/Sidebar';
 import { TranscriptionList } from './components/TranscriptionList';
 import { Editor } from './components/Editor';
 import { SettingsModal } from './components/SettingsModal';
+import { NotificationManager } from './components/NotificationManager';
+import type { TaskStatus } from './components/NotificationManager';
 import type {
   PromptTemplate,
   ApiConfig,
@@ -68,6 +70,83 @@ export default function App() {
   // UI State
   const [isPromptRecording] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [tasks, setTasks] = useState<TaskStatus[]>([]);
+
+  // Monitor blocks to update tasks
+  useEffect(() => {
+    // 1. Detect new processing blocks
+    const processingBlocks = blocks.filter(b => b.text === '(Transcription queued...)');
+
+    setTasks(prevTasks => {
+      let newTasks = [...prevTasks];
+      let changed = false;
+
+      // Add new tasks
+      processingBlocks.forEach(b => {
+        if (!newTasks.find(t => t.id === b.id)) {
+          newTasks.push({
+            id: b.id,
+            type: 'processing',
+            message: `ブロック ${b.id.substring(0, 6)}... の音声を認識中`,
+            startTime: Date.now()
+          });
+          changed = true;
+        }
+      });
+
+      // Update existing active tasks
+      newTasks = newTasks.map(t => {
+        if (t.type !== 'processing') return t; // Already done
+
+        // Find current block state
+        const block = blocks.find(b => b.id === t.id);
+        if (!block) {
+          // Block disappeared? Mark error or ignore?
+          // Let's mark error
+          changed = true;
+          return { ...t, type: 'error', message: 'ブロックが見つかりません', endTime: Date.now() };
+        }
+
+        if (block.text !== '(Transcription queued...)') {
+          changed = true;
+          if (block.text.startsWith('[Error]')) {
+            return { ...t, type: 'error', message: block.text, endTime: Date.now() };
+          } else {
+            return { ...t, type: 'success', message: '認識が完了しました', endTime: Date.now() };
+          }
+        }
+        return t;
+      });
+
+      return changed ? newTasks : prevTasks;
+    });
+  }, [blocks]);
+
+  // Polling for active tasks
+  useEffect(() => {
+    const hasProcessing = tasks.some(t => t.type === 'processing');
+    if (!hasProcessing || !selectedSessionId) return;
+
+    const interval = setInterval(() => {
+      fetchBlocks(selectedSessionId); // Poll for updates
+    }, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [tasks, selectedSessionId, fetchBlocks]);
+
+  // Auto dismiss success tasks
+  useEffect(() => {
+    if (tasks.some(t => t.type === 'success')) {
+      const timer = setTimeout(() => {
+        setTasks(prev => prev.filter(t => t.type !== 'success'));
+      }, 5000); // Remove success toast after 5s
+      return () => clearTimeout(timer);
+    }
+  }, [tasks]);
+
+  const handleDismissTask = (id: string) => {
+    setTasks(prev => prev.filter(t => t.id !== id));
+  };
 
   // Settings State
   // Settings State
@@ -293,7 +372,8 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-gray-100 text-gray-800 font-sans overflow-hidden">
+    <div className="flex h-screen w-full bg-gray-100 text-gray-800 font-sans overflow-hidden relative">
+      <NotificationManager tasks={tasks} onDismiss={handleDismissTask} />
 
       {/* --- Left Pane: Sidebar --- */}
       <Sidebar
@@ -308,35 +388,79 @@ export default function App() {
       <main className="flex-1 flex flex-col min-w-0">
         <div className="flex-1 flex min-h-0">
 
-          {/* --- Center Pane: Transcription List --- */}
-          {(selectedSessionId && !blocksLoading) ? (
-            <TranscriptionList
-              blocks={blocks}
-              setBlocks={handleSetBlocks} // Passing setBlocks but mainly for local optmistic?
-              onAddTextBlock={handleAddTextBlock}
-              onUploadFile={handleFileUpload}
-              onDeleteBlock={handleDeleteBlock}
-              onReTranscribe={handleReTranscribe}
-              onUpdateBlock={handleBlockUpdate}
-              onCheckBlock={handleBlockCheck}
-            />
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 text-gray-400 gap-4">
-              {blocksLoading ? (
-                <Loader2 className="animate-spin" />
+          {/* --- Center Pane: Transcription List & Recording --- */}
+          <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200 bg-white relative">
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {(selectedSessionId && !blocksLoading) ? (
+                <TranscriptionList
+                  blocks={blocks}
+                  setBlocks={handleSetBlocks}
+                  onAddTextBlock={handleAddTextBlock}
+                  onUploadFile={handleFileUpload}
+                  onDeleteBlock={handleDeleteBlock}
+                  onReTranscribe={handleReTranscribe}
+                  onUpdateBlock={handleBlockUpdate}
+                  onCheckBlock={handleBlockCheck}
+                />
               ) : (
-                <>
-                  <p>セッションを選択またはファイルを作成してください</p>
-                  <button
-                    onClick={handleAddTextBlock}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    <Square size={16} /> テキストノートを作成
-                  </button>
-                </>
+                <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 text-gray-400 gap-6 p-4">
+                  {blocksLoading ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <>
+                      <div className="text-center">
+                        <p className="text-lg font-medium text-gray-600 mb-2">セッションを開始</p>
+                        <p className="text-sm">左側のリストからセッションを選択するか、<br />新規作成・録音を開始してください。</p>
+                      </div>
+
+                      <div className="flex flex-col gap-3 w-full max-w-xs">
+                        <button
+                          onClick={handleAddTextBlock}
+                          className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all font-medium"
+                        >
+                          <Square size={18} /> テキストノートを作成
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
-          )}
+
+            {/* --- Center Pane Footer: Recording Controls --- */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50 backdrop-blur-sm flex items-center justify-center gap-4">
+              <button
+                onClick={handleMainRecordingToggle}
+                className={`
+                    w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-105
+                    ${isRecording
+                    ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-200'
+                    : 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white'
+                  }
+                    `}
+                title={isRecording ? "録音を停止" : "ブロックに音声を追加 / 新規録音"}
+              >
+                {isRecording ? <Square size={24} fill="currentColor" /> : <Mic size={28} />}
+              </button>
+
+              {isRecording && (
+                <div className="flex flex-col">
+                  <span className="text-red-500 text-xs font-bold animate-pulse">● RECORDING</span>
+                  <span className="text-gray-800 text-xl font-mono font-medium">{new Date(recordingDuration * 1000).toISOString().substr(14, 5)}</span>
+                </div>
+              )}
+
+              {!isRecording && (
+                <span className="text-xs text-gray-400 font-medium hidden sm:block">
+                  {selectedSessionId ? "このセッションに音声を追加" : "録音して新規セッションを作成"}
+                </span>
+              )}
+
+              {recordingError && (
+                <div className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded border border-red-100">{recordingError}</div>
+              )}
+            </div>
+          </div>
 
           {/* --- Right Pane: Editor --- */}
           <Editor
@@ -345,34 +469,11 @@ export default function App() {
           />
         </div>
 
-        {/* --- Footer Control --- */}
+        {/* --- Footer Control (LLM Only) --- */}
         <footer className="h-auto border-t border-gray-200 bg-white p-4 shadow-lg z-10 flex flex-col gap-3">
           <div className="flex items-center gap-4">
-            {/* Left: Mic Button */}
-            <button
-              onClick={handleMainRecordingToggle}
-              className={`
-              w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all
-              ${isRecording
-                  ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-200'
-                  : 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white hover:shadow-lg hover:scale-105'
-                }
-            `}
-              title={isRecording ? "録音を停止" : "録音を開始"}
-            >
-              {isRecording ? <Square size={20} fill="currentColor" /> : <Mic size={24} />}
-            </button>
+            {/* Left side spacer where Mic used to be - optional, or just remove */}
 
-            {/* Recording Status / Timer */}
-            {isRecording && (
-              <div className="ml-4 flex items-center gap-2">
-                <span className="text-red-500 text-sm font-mono font-bold animate-pulse">● REC</span>
-                <span className="text-gray-600 text-sm font-mono">{new Date(recordingDuration * 1000).toISOString().substr(14, 5)}</span>
-              </div>
-            )}
-            {recordingError && (
-              <div className="ml-4 text-red-500 text-xs">{recordingError}</div>
-            )}
             <div className="flex-1 flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <select className="text-sm border border-gray-300 rounded px-2 py-1 bg-gray-50 hover:bg-gray-100 focus:outline-none text-gray-700" value={selectedFooterTemplateId} onChange={handleFooterTemplateSelect}>
@@ -383,7 +484,7 @@ export default function App() {
               </div>
               <div className="flex gap-2 w-full">
                 <div className="relative flex-1 flex">
-                  <textarea className="w-full border border-gray-300 rounded-l-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-h-[42px] max-h-[80px] resize-y" placeholder="プロンプトを入力..." value={promptText} onChange={(e) => setPromptText(e.target.value)} />
+                  <textarea className="w-full border border-gray-300 rounded-l-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-h-[42px] max-h-[80px] resize-y" placeholder="AIへの指示・プロンプトを入力..." value={promptText} onChange={(e) => setPromptText(e.target.value)} />
                   <button onClick={handlePromptRecordToggle} className={`px-3 border-y border-r border-gray-300 rounded-r-lg hover:bg-gray-50 flex items-center justify-center transition-colors ${isPromptRecording ? 'text-red-500 bg-red-50 border-red-200' : 'text-gray-500'}`} title="音声で指示を追加"><Mic size={18} className={isPromptRecording ? "animate-pulse" : ""} /></button>
                 </div>
                 <button onClick={handleRunLLM} disabled={isGenerating} className={`bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-lg font-medium shadow-sm flex items-center gap-2 transition-colors h-auto ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}>

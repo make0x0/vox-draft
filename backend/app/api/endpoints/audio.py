@@ -1,7 +1,7 @@
 import os
 import shutil
 import uuid
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.base import get_db
 from app.models.session import Session as SessionModel
@@ -14,7 +14,7 @@ DATA_DIR = "/data"
 @router.post("/upload")
 def upload_audio_file(
     file: UploadFile = File(...),
-    session_id: str = None, 
+    session_id: str = Form(None), 
     db: Session = Depends(get_db)
 ):
     # Ensure session exists or create new
