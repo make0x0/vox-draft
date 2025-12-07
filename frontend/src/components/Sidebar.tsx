@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Book, CheckSquare, Search, Calendar, Trash2, Settings, Edit3, Check } from 'lucide-react';
+import { Book, CheckSquare, Search, Calendar, Trash2, Settings, Edit3, Check, Plus, Sparkles } from 'lucide-react';
 import type { HistoryItem } from '../types';
 
 interface SidebarProps {
@@ -9,7 +9,9 @@ interface SidebarProps {
     onSelectSession: (id: string) => void;
     onDeleteSessions: (ids: string[]) => void;
     onUpdateSessionTitle: (id: string, newTitle: string) => void;
+    onGenerateTitle: (id: string) => Promise<string>;
     onOpenSettings: () => void;
+    onNewSession: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -17,7 +19,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onSelectSession,
     onDeleteSessions,
     onUpdateSessionTitle,
-    onOpenSettings
+    onGenerateTitle,
+    onOpenSettings,
+    onNewSession
 }) => {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchDateFrom, setSearchDateFrom] = useState("");
@@ -79,6 +83,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         </button>
                     </div>
                 </div>
+
+                <button
+                    onClick={onNewSession}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-md shadow-sm flex items-center justify-center gap-2 transition-colors"
+                >
+                    <Plus size={16} /> 新しいセッション
+                </button>
                 <div className="relative">
                     <Search size={14} className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input type="text" className="w-full text-sm border border-gray-300 rounded-md pl-8 pr-8 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-none" placeholder="タイトル・日付で検索" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
@@ -109,10 +120,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                             onChange={(e) => setTempTitle(e.target.value)}
                                             className="w-full text-sm border border-blue-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                             autoFocus
-                                            onBlur={saveTitle}
+                                            onBlur={saveTitle} // Keep simple blur save
                                             onKeyDown={(e) => e.key === 'Enter' && saveTitle()}
                                         />
-                                        <button onClick={saveTitle} className="text-green-600 p-1"><Check size={14} /></button>
+                                        <button onClick={saveTitle} className="text-green-600 p-1 hover:bg-green-50 rounded"><Check size={14} /></button>
+                                        <button onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                                const newT = await onGenerateTitle(item.id);
+                                                setTempTitle(newT);
+                                            } catch (err) {
+                                                alert("AIタイトルの生成に失敗しました");
+                                            }
+                                        }} className="text-purple-600 p-1 hover:bg-purple-50 rounded" title="AIでタイトルを生成"><Sparkles size={14} /></button>
                                     </div>
                                 ) : (
                                     <div className="text-sm font-medium text-gray-800 line-clamp-2" title={item.summary}>

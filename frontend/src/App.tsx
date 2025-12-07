@@ -371,6 +371,29 @@ export default function App() {
     }
   };
 
+  const handleNewSession = () => {
+    setSelectedSessionId(null);
+  };
+
+  const handleGenerateTitle = async (sessionId: string): Promise<string> => {
+    // 1. Get session blocks text
+    // Easiest is to fetch session detail or list blocks.
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/sessions/${sessionId}/blocks`);
+    if (!res.ok) throw new Error("Failed to fetch blocks");
+    const blocksData = await res.json();
+    const fullText = blocksData.map((b: any) => b.text).join("\n");
+
+    // 2. Call LLM generate title
+    const genRes = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/llm/generate_title`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: fullText })
+    });
+    if (!genRes.ok) throw new Error("Failed to generate title");
+    const data = await genRes.json();
+    return data.title;
+  };
+
   return (
     <div className="flex h-screen w-full bg-gray-100 text-gray-800 font-sans overflow-hidden relative">
       <NotificationManager tasks={tasks} onDismiss={handleDismissTask} />
@@ -381,7 +404,9 @@ export default function App() {
         onSelectSession={(id) => setSelectedSessionId(id)}
         onDeleteSessions={handleDeleteSessions}
         onUpdateSessionTitle={handleUpdateSessionTitle}
+        onGenerateTitle={handleGenerateTitle}
         onOpenSettings={() => setShowSettings(true)}
+        onNewSession={handleNewSession}
       />
 
       {/* --- Main Area --- */}

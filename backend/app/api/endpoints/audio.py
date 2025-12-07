@@ -19,7 +19,9 @@ def upload_audio_file(
 ):
     # Ensure session exists or create new
     if not session_id:
-        new_session = SessionModel(title=f"Session {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}")
+        # JST timezone
+        JST = timezone(timedelta(hours=9))
+        new_session = SessionModel(title=f"Memo {datetime.now(JST).strftime('%Y/%m/%d %H:%M')}")
         db.add(new_session)
         db.commit()
         db.refresh(new_session)
@@ -52,4 +54,4 @@ def upload_audio_file(
     
     return {"block_id": block.id, "session_id": session_id, "file_path": file_path}
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta

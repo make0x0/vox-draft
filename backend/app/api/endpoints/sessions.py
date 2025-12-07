@@ -49,10 +49,16 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
     
     return session
 
+from datetime import datetime, timedelta, timezone
+
+# JST timezone
+JST = timezone(timedelta(hours=9))
+
 @router.post("/", response_model=session_schema.Session)
 def create_session(session_in: session_schema.SessionCreate, db: DBSession = Depends(get_db)):
+    default_title = f"Memo {datetime.now(JST).strftime('%Y/%m/%d %H:%M')}"
     db_session = SessionModel(
-        title=session_in.title or "New Session",
+        title=session_in.title or default_title,
         summary=session_in.summary or ""
     )
     db.add(db_session)
