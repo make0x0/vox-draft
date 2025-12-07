@@ -31,7 +31,11 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
         onCheckBlock(id, !currentChecked);
     };
 
-    const updateBlockText = (id: string, text: string) => {
+    const updateLocalBlockText = (id: string, text: string) => {
+        setBlocks(prev => prev.map(b => b.id === id ? { ...b, text } : b));
+    };
+
+    const persistBlockText = (id: string, text: string) => {
         onUpdateBlock(id, text);
     };
 
@@ -121,7 +125,8 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                                 className="w-full text-sm text-gray-800 leading-relaxed outline-none focus:bg-yellow-50 rounded px-2 py-1 -mx-2 resize-y bg-transparent min-h-[3rem] max-h-[50vh]"
                                 rows={Math.min(Math.max(2, block.text.split('\n').length), 20)}
                                 value={block.text}
-                                onChange={(e) => updateBlockText(block.id, e.target.value)}
+                                onChange={(e) => updateLocalBlockText(block.id, e.target.value)}
+                                onBlur={(e) => persistBlockText(block.id, e.target.value)}
                             />
                         </div>
                     </div>
@@ -142,7 +147,14 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                             <div className="flex gap-2"><button onClick={() => setExpandedBlockId(null)} className="px-4 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded shadow-sm flex items-center gap-2"><Save size={14} /> 完了して閉じる</button></div>
                         </div>
                         <div className="flex-1 p-0 relative">
-                            <textarea className="w-full h-full p-6 resize-none focus:outline-none text-base leading-relaxed text-gray-800 bg-white font-sans" value={expandedBlock.text} onChange={(e) => updateBlockText(expandedBlock.id, e.target.value)} placeholder="テキストを入力..." autoFocus />
+                            <textarea
+                                className="w-full h-full p-6 resize-none focus:outline-none text-base leading-relaxed text-gray-800 bg-white font-sans"
+                                value={expandedBlock.text}
+                                onChange={(e) => updateLocalBlockText(expandedBlock.id, e.target.value)}
+                                onBlur={(e) => persistBlockText(expandedBlock.id, e.target.value)}
+                                placeholder="テキストを入力..."
+                                autoFocus
+                            />
                         </div>
                         <div className="p-2 border-t bg-gray-50 text-xs text-gray-400 text-right">{expandedBlock.text.length} 文字</div>
                     </div>
