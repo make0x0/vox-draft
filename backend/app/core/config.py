@@ -89,15 +89,23 @@ def _parse_azure_config(settings_obj, prefix, raw_endpoint):
 
     # Pattern: https://{host}/openai/deployments/{deployment}/...
     # Use non-greedy match for base endpoint to support paths (e.g. APIM)
-    match = re.search(r"^(.*?)/openai/deployments/([^/]+)", raw_endpoint)
+    match = re.search(r"^(.*?)/openai/deployments/([^/\?]+)", raw_endpoint)
     if match:
         base_endpoint = match.group(1) + "/"
         deployment = match.group(2)
         
-        # Update settings dynamically
+        # dynamic update settings
         setattr(settings_obj, f"{prefix}_AZURE_ENDPOINT", base_endpoint)
         setattr(settings_obj, f"{prefix}_AZURE_DEPLOYMENT", deployment)
-        print(f"Parsed Azure {prefix} URL: Endpoint={base_endpoint}, Deployment={deployment}")
+        
+        # Extract api-version
+        version_match = re.search(r"api-version=([^&]+)", raw_endpoint)
+        if version_match:
+            api_version = version_match.group(1)
+            setattr(settings_obj, f"{prefix}_AZURE_API_VERSION", api_version)
+            print(f"Parsed Azure {prefix} URL: Endpoint={base_endpoint}, Deployment={deployment}, Version={api_version}")
+        else:
+            print(f"Parsed Azure {prefix} URL: Endpoint={base_endpoint}, Deployment={deployment} (Version not found in URL)")
 
 settings = Settings()
 load_config()

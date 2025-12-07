@@ -23,9 +23,15 @@ export interface PromptTemplate {
 }
 
 export interface ApiConfig {
-    url: string;
-    authType: 'api-key' | 'bearer';
-    keyMasked: string;
+    provider: string;
+    url: string; // Base URL
+    model?: string; // LLM only
+    azure_deployment?: string;
+    azure_endpoint?: string;
+    timeout?: number;
+    // Legacy fields (optional)
+    authType?: 'api-key' | 'bearer';
+    keyMasked?: string;
 }
 
 export interface VocabularyItem {

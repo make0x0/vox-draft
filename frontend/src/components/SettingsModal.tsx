@@ -353,14 +353,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {/* --- API Tab --- */}
                         {settingsTab === 'api' && (
                             <div className="space-y-6">
-                                <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-sm text-yellow-800 mb-4"><span className="font-bold">Info:</span> API設定は `config.yaml` から読み込まれています。</div>
+                                <div className="bg-blue-50 border border-blue-200 p-3 rounded text-sm text-blue-800 mb-4"><span className="font-bold">Info:</span> これらの設定はバックエンドの `config.yaml` で管理されています。</div>
+
+                                {/* STT Config */}
                                 <h4 className="text-md font-bold text-gray-900 border-b pb-2 mb-4">音声認識 API (STT)</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-500 mb-1">Endpoint URL</label><input type="text" value={apiConfig.stt.url} readOnly className="w-full bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm text-gray-600 font-mono" /></div>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">プロバイダー</span>{apiConfig.stt.provider}</div>
+                                    <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">デプロイメント/モデル</span>{apiConfig.stt.azure_deployment || "whisper-1"}</div>
+                                    <div className="col-span-2 bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold flex justify-between">エンドポイント URL <span>(Timeout: {apiConfig.stt.timeout}s)</span></span>
+                                        <div className="font-mono text-xs break-all text-gray-600 truncate">{apiConfig.stt.azure_endpoint || apiConfig.stt.url}</div>
+                                    </div>
                                 </div>
+
+                                {/* LLM Config */}
                                 <h4 className="text-md font-bold text-gray-900 border-b pb-2 mb-4 mt-8">文章生成 API (LLM)</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-500 mb-1">Endpoint URL</label><input type="text" value={apiConfig.llm.url} readOnly className="w-full bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm text-gray-600 font-mono" /></div>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">プロバイダー</span>{apiConfig.llm.provider}</div>
+                                    <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">モデル/デプロイメント</span>{apiConfig.llm.azure_deployment || apiConfig.llm.model}</div>
+                                    <div className="col-span-2 bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold flex justify-between">エンドポイント URL <span>(Timeout: {apiConfig.llm.timeout}s)</span></span>
+                                        <div className="font-mono text-xs break-all text-gray-600 truncate">{apiConfig.llm.azure_endpoint || apiConfig.llm.url}</div>
+                                    </div>
                                 </div>
                             </div>
                         )}

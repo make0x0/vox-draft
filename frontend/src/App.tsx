@@ -32,11 +32,6 @@ const initialVocabulary: VocabularyItem[] = [
   { id: 'v2', reading: 'ぷろじぇくとあるふぁ', word: 'Project Alpha' },
 ];
 
-const mockApiConfig: { stt: ApiConfig, llm: ApiConfig } = {
-  stt: { url: '/api/stt/transcribe', authType: 'bearer', keyMasked: '●●●●●●●● (Backend Config)' },
-  llm: { url: '/api/llm/chat/stream', authType: 'bearer', keyMasked: '●●●●●●●● (Backend Config)' }
-};
-
 export default function App() {
   // --- State ---
   const { sessions, fetchSessions, deleteSessions, updateSessionTitle, createSession } = useSessions();
@@ -81,7 +76,9 @@ export default function App() {
       processing: { enabled: true },
       success: { enabled: true, duration: 4000 },
       error: { enabled: true, duration: 8000 }
-    }
+    },
+    stt: { provider: 'loading...', url: '' },
+    llm: { provider: 'loading...', url: '' }
   });
 
   // Fetch System Config
@@ -679,7 +676,7 @@ export default function App() {
           setTemplates={setTemplates}
           vocabulary={vocabulary}
           setVocabulary={setVocabulary}
-          apiConfig={mockApiConfig}
+          apiConfig={{ stt: systemConfig.stt, llm: systemConfig.llm }}
           generalSettings={generalSettings}
           setGeneralSettings={setGeneralSettings}
           onDataUpdated={fetchSessions}
