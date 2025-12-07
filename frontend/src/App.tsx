@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Mic, Square, Send, Loader2 } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Mic, Square, Send, Loader2, Upload } from 'lucide-react';
+
 import { client, endpoints } from './api/client';
 import { useSessions } from './hooks/useSessions';
 import { useBlocks } from './hooks/useBlocks';
@@ -45,6 +46,9 @@ export default function App() {
 
   const [editorContent, setEditorContent] = useState<string>("# New Session...");
 
+  // Ref for footer upload
+  const footerFileInputRef = useRef<HTMLInputElement>(null);
+
   // Audio Recorder
   const {
     isRecording,
@@ -71,6 +75,25 @@ export default function App() {
   const [isPromptRecording] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [tasks, setTasks] = useState<TaskStatus[]>([]);
+  // System Config State
+  const [systemConfig, setSystemConfig] = useState<any>({
+    notifications: {
+      processing: { enabled: true },
+      success: { enabled: true, duration: 4000 },
+      error: { enabled: true, duration: 8000 }
+    }
+  });
+
+  // Fetch System Config
+  useEffect(() => {
+    client.get('/api/system/config')
+      .then(res => {
+        setSystemConfig(res.data);
+      })
+      .catch(err => {
+        console.error("Failed to fetch system config:", err);
+      });
+  }, []);
 
   // Monitor blocks to update tasks
   useEffect(() => {
@@ -107,15 +130,24 @@ export default function App() {
           return { ...t, type: 'error', message: 'ブロックが見つかりません', endTime: Date.now() };
         }
 
-        if (block.text !== '(Transcription queued...)') {
-          changed = true;
-          if (block.text.startsWith('[Error]')) {
-            return { ...t, type: 'error', message: block.text, endTime: Date.now() };
-          } else {
-            return { ...t, type: 'success', message: '認識が完了しました', endTime: Date.now() };
+        // Check for specific processing states (queued, retrying, etc.)
+        // Backend now sends: "(Transcription queued...)", "(Retry 1/3...)", "(Error 500: Retrying...)"
+        // All start with "(".
+        if (block.text.startsWith('(') && block.text.endsWith(')')) {
+          // Still processing, update message if changed
+          if (block.text !== t.message) {
+            changed = true;
+            return { ...t, type: 'processing', message: block.text, endTime: undefined };
           }
+          return t;
         }
-        return t;
+
+        changed = true;
+        if (block.text.startsWith('[Error]')) {
+          return { ...t, type: 'error', message: block.text, endTime: Date.now() };
+        } else {
+          return { ...t, type: 'success', message: '認識が完了しました', endTime: Date.now() };
+        }
       });
 
       return changed ? newTasks : prevTasks;
@@ -128,27 +160,50 @@ export default function App() {
     if (!hasProcessing || !selectedSessionId) return;
 
     const interval = setInterval(() => {
-      fetchBlocks(selectedSessionId); // Poll for updates
+      fetchBlocks(selectedSessionId, true); // Poll for updates silently
     }, 2000); // Poll every 2 seconds
 
     return () => clearInterval(interval);
   }, [tasks, selectedSessionId, fetchBlocks]);
 
-  // Auto dismiss success tasks
+  // Auto dismiss success/error tasks based on Config
   useEffect(() => {
-    if (tasks.some(t => t.type === 'success')) {
+    // Dismiss Success
+    const successTasks = tasks.filter(t => t.type === 'success');
+    if (successTasks.length > 0) {
+      const duration = systemConfig.notifications?.success?.duration || 4000;
       const timer = setTimeout(() => {
         setTasks(prev => prev.filter(t => t.type !== 'success'));
-      }, 5000); // Remove success toast after 5s
+      }, duration);
       return () => clearTimeout(timer);
     }
-  }, [tasks]);
+
+    // Dismiss Error
+    const errorTasks = tasks.filter(t => t.type === 'error');
+    if (errorTasks.length > 0) {
+      const duration = systemConfig.notifications?.error?.duration || 8000;
+      const timer = setTimeout(() => {
+        setTasks(prev => prev.filter(t => t.type !== 'error'));
+      }, duration);
+      return () => clearTimeout(timer);
+    }
+  }, [tasks, systemConfig]);
 
   const handleDismissTask = (id: string) => {
     setTasks(prev => prev.filter(t => t.id !== id));
   };
 
   const addNotification = (type: 'success' | 'error' | 'processing', message: string) => {
+    // Check config if enabled (optional logic here, but easier in UI to just hide)
+    // But if we don't add to state, we don't need UI logic.
+    // However, for processing, we NEED state for logic.
+    // For success/error, we can skip adding if disabled?
+    // User asked "ON/OFF". If OFF, maybe just don't show.
+    // If I skip active adding, logic breaks? No, logic uses 'processing'.
+    // 'success'/'error' are terminal states.
+    // If I don't add 'success', it's fine.
+    // But let's handle visibility in NotificationManager for consistency with "processing" which MUST exist in state.
+
     setTasks(prev => [...prev, {
       id: Math.random().toString(36).substring(7),
       type,
@@ -310,13 +365,36 @@ export default function App() {
     // Let's create a new Markdown section
     setEditorContent(prev => prev + `\n\n## AI生成結果\n`);
 
+    const llmTaskId = Math.random().toString(36).substring(7);
+
+    // Manually add initial task to track ID
+    setTasks(prev => [...prev, {
+      id: llmTaskId,
+      type: 'processing',
+      message: "AI生成を開始します...",
+      startTime: Date.now()
+    }]);
+
     try {
       await generate(messages, (chunk) => {
         setEditorContent(prev => prev + chunk);
+      }, (statusMsg, type) => {
+        // Handle status updates
+        setTasks(prev => prev.map(t => t.id === llmTaskId ? {
+          ...t,
+          message: statusMsg,
+          type: type === 'error' ? 'error' : 'processing',
+          endTime: type === 'error' ? Date.now() : undefined
+        } : t));
       });
+
+      // Success completion (if not already error)
+      setTasks(prev => prev.map(t => t.id === llmTaskId ? { ...t, type: 'success', message: '生成が完了しました', endTime: Date.now() } : t));
+
     } catch (err) {
       console.error(err);
-      addNotification("error", "AI生成中にエラーが発生しました。");
+      // Ensure error shown
+      setTasks(prev => prev.map(t => t.id === llmTaskId ? { ...t, type: 'error', message: "AI生成中にエラーが発生しました。", endTime: Date.now() } : t));
     }
   };
 
@@ -324,20 +402,7 @@ export default function App() {
     await deleteBlock(id);
   };
 
-  // Wrapper for setting blocks locally if needed (e.g. checkbox)
-  // The useBlocks hook exposes updateBlock which does PATCH.
-  // TranscriptionList might expect setBlocks to just update local state?
-  // We should modify TranscriptionList to use updateBlock callback instead of setBlocks if possible.
-  // BUT for now, we intercept setBlocks to support local updates via TranscriptionList props?
-  // Actually TranscriptionList takes setBlocks.
-  // We can wrap it:
   const handleSetBlocks = (newBlocksOrFn: any) => {
-    // This is complex because setBlocks supports function update.
-    // It's better to update TranscriptionList to accept specific handlers.
-    // But to minimize changes, let's just use the local state setter from hook
-    // and assume handleBlockUpdate handles persistence.
-    // Wait, hook returns setBlocks which is simple state setter.
-    // If we only use setBlocks, it won't persist.
     setBlocks(newBlocksOrFn);
   };
 
@@ -386,14 +451,11 @@ export default function App() {
   };
 
   const handleGenerateTitle = async (sessionId: string): Promise<string> => {
-    // 1. Get session blocks text
-    // Easiest is to fetch session detail or list blocks.
     const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/sessions/${sessionId}/blocks`);
     if (!res.ok) throw new Error("Failed to fetch blocks");
     const blocksData = await res.json();
     const fullText = blocksData.map((b: any) => b.text).join("\n");
 
-    // 2. Call LLM generate title
     const genRes = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/llm/generate_title`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -406,7 +468,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-full bg-gray-100 text-gray-800 font-sans overflow-hidden relative">
-      <NotificationManager tasks={tasks} onDismiss={handleDismissTask} />
+      <NotificationManager tasks={tasks} onDismiss={handleDismissTask} config={systemConfig.notifications} />
 
       {/* --- Left Pane: Sidebar --- */}
       <Sidebar
@@ -486,9 +548,34 @@ export default function App() {
               )}
 
               {!isRecording && (
-                <span className="text-xs text-gray-400 font-medium hidden sm:block">
-                  {selectedSessionId ? "このセッションに音声を追加" : "録音して新規セッションを作成"}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400 font-medium hidden sm:block">
+                    {selectedSessionId ? "このセッションに音声を追加" : "録音して新規セッションを作成"}
+                  </span>
+
+                  <div className="flex items-center">
+                    <input
+                      type="file"
+                      ref={footerFileInputRef}
+                      className="hidden"
+                      accept="audio/*,video/*,.m4a,.mp3,.wav"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileUpload(e.target.files[0]);
+                          e.target.value = ''; // Reset
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => footerFileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-2 py-1.5 rounded-md transition-all border border-transparent hover:border-blue-100"
+                      title="音声ファイルをアップロードして開始"
+                    >
+                      <Upload size={14} />
+                      <span>ファイル選択</span>
+                    </button>
+                  </div>
+                </div>
               )}
 
               {recordingError && (

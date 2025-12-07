@@ -4,7 +4,7 @@ import type { ChatMessage } from '../types';
 
 interface UseLLMReturn {
     isGenerating: boolean;
-    generate: (messages: ChatMessage[], onData: (chunk: string) => void) => Promise<void>;
+    generate: (messages: ChatMessage[], onData: (chunk: string) => void, onStatus?: (status: string, type: 'status' | 'error') => void) => Promise<void>;
     error: string | null;
 }
 
@@ -13,7 +13,7 @@ export const useLLM = (): UseLLMReturn => {
     const [error, setError] = useState<string | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    const generate = useCallback(async (messages: ChatMessage[], onData: (chunk: string) => void) => {
+    const generate = useCallback(async (messages: ChatMessage[], onData: (chunk: string) => void, onStatus?: (status: string, type: 'status' | 'error') => void) => {
         setIsGenerating(true);
         setError(null);
 
@@ -63,7 +63,19 @@ export const useLLM = (): UseLLMReturn => {
                         if (dataStr === '[DONE]') continue;
                         try {
                             const data = JSON.parse(dataStr);
-                            if (data.content) {
+
+                            // Check for status/error messages first
+                            if (data.type === 'status' || data.type === 'error') {
+                                if (onStatus) {
+                                    onStatus(data.message, data.type);
+                                }
+                                if (data.type === 'error') {
+                                    // If strict error, maybe throw? Or just let caller handle notification.
+                                    // Let's not throw here to allow partial content if any? 
+                                    // But usually error event means stop.
+                                    // Wait, backend yields error event then returns.
+                                }
+                            } else if (data.content) {
                                 onData(data.content);
                             }
                         } catch (e) {

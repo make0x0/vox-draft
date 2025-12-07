@@ -4,10 +4,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from app.core.config import settings
+from app.services.openai_factory import get_openai_client
 
 router = APIRouter()
-
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 class ChatRequest(BaseModel):
     messages: list
@@ -16,25 +15,70 @@ class ChatRequest(BaseModel):
 
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
+    client = get_openai_client("llm")
+    
+    # Determine model/deployment
+    if settings.LLM_PROVIDER == "azure":
+        model_to_use = settings.LLM_AZURE_DEPLOYMENT
+    else:
+        model_to_use = request.model
+
     # Prepare OpenAI stream
-    try:
-        stream = client.chat.completions.create(
-            model=request.model,
-            messages=request.messages,
-            temperature=request.temperature,
-            stream=True,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    import time
+    from openai import APIStatusError
 
-    def event_generator():
-        for chunk in stream:
-            if chunk.choices[0].delta.content is not None:
-                content = chunk.choices[0].delta.content
-                yield f"data: {json.dumps({'content': content})}\n\n"
-        yield "data: [DONE]\n\n"
+    async def event_generator():
+        target_messages = request.messages # Messages are already in request
+        
+        # Manual retry settings
+        max_retries = settings.LLM_MAX_RETRIES
+        retry_delay = 1.0
+        base_url = client.base_url
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+        for attempt in range(max_retries + 1):
+            try:
+                # Notify frontend of start/retry
+                if attempt == 0:
+                    yield f"data: {json.dumps({'type': 'status', 'message': f'(Connecting to {base_url}...)'})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'type': 'status', 'message': f'(Retry {attempt}/{max_retries} to {base_url}...)'})}\n\n"
+
+                stream = client.chat.completions.create(
+                    model=model_to_use,
+                    messages=target_messages,
+                    temperature=request.temperature,
+                    stream=True,
+                    # timeout handled by client strict settings but wrapped here
+                )
+                
+                # If successful, yield chunks
+                for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta.content is not None:
+                        content = chunk.choices[0].delta.content
+                        yield f"data: {json.dumps({'content': content})}\n\n"
+                
+                yield "data: [DONE]\n\n"
+                return # Success, exit loop
+
+            except APIStatusError as e:
+                error_code = e.status_code
+                if attempt < max_retries:
+                    yield f"data: {json.dumps({'type': 'status', 'message': f'(Error {error_code}: Retrying {attempt+1}/{max_retries}...)'})}\n\n"
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    # Final error
+                    yield f"data: {json.dumps({'type': 'error', 'message': f'Error {error_code}: {e.message}'})}\n\n"
+                    return
+            except Exception as e:
+                 if attempt < max_retries:
+                    yield f"data: {json.dumps({'type': 'status', 'message': f'(Error: {str(e)}... Retrying {attempt+1}/{max_retries})'})}\n\n"
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                 else:
+                    yield f"data: {json.dumps({'type': 'error', 'message': f'Error: {str(e)}'})}\n\n"
+                    return
+
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 class TitleGenerationRequest(BaseModel):
@@ -43,9 +87,16 @@ class TitleGenerationRequest(BaseModel):
 
 @router.post("/generate_title")
 async def generate_title(request: TitleGenerationRequest):
+    client = get_openai_client("llm")
+    
+    if settings.LLM_PROVIDER == "azure":
+        model_to_use = settings.LLM_AZURE_DEPLOYMENT
+    else:
+        model_to_use = request.model
+
     try:
         completion = client.chat.completions.create(
-            model=request.model,
+            model=model_to_use,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant. Generate a concise title (max 20 characters) for the given text. The title should be in Japanese and summarize the main topic. do not include quotation marks."},
                 {"role": "user", "content": f"Text: {request.text[:1000]}..."} # Limit input length

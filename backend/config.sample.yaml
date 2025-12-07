@@ -8,11 +8,35 @@ system:
     timezone: "Asia/Tokyo"
     date_format: "%Y/%m/%d %H:%M"
 
+  notifications:
+    processing:
+      enabled: true
+    success:
+      enabled: true
+      duration: 4000
+    error:
+      enabled: true
+      duration: 8000
+
   stt:
+    provider: "openai" # "openai" or "azure"
     openai_api_url: "https://api.openai.com/v1/audio/transcriptions"
-    # Set env var OPENAI_API_KEY
+    # Azure specific (if provider is azure)
+    azure_deployment: "whisper" 
+    azure_api_version: "2024-06-01"
+    # Option A: Full URL (Recommended) -> azure_deployment above is ignored.
+    azure_endpoint: "https://your-resource.openai.azure.com/openai/deployments/whisper/audio/transcriptions?api-version=2024-06-01" 
+    timeout: 60
+    max_retries: 3
 
   llm:
+    provider: "openai" # "openai" or "azure"
     openai_api_url: "https://api.openai.com/v1/chat/completions"
     model: "gpt-4o"
+    # Azure specific (if provider is azure)
+    azure_deployment: "gpt-4o"
+    azure_api_version: "2024-06-01"
+    # Endoint: 
+    # Option A: Full URL (Recommended) -> azure_deployment above is ignored.
+    azure_endpoint: "https://your-resource.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-06-01"
     # Set env var OPENAI_API_KEY

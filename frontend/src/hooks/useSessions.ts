@@ -18,7 +18,8 @@ export const useSessions = () => {
             const data = response.data.map((item: any) => ({
                 id: item.id,
                 summary: item.title || item.summary || 'No Title', // Use title as summary for now
-                date: new Date(item.created_at).toLocaleString(),
+                // Parse as UTC (append Z if missing) then localize
+                date: new Date(item.created_at + (item.created_at.endsWith('Z') ? '' : 'Z')).toLocaleString(),
                 isoDate: item.created_at.split('T')[0]
             }));
             setSessions(data);

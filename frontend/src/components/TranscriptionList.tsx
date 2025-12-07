@@ -73,7 +73,7 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                 <div className="flex gap-2 items-center">
                     <input type="file" ref={fileInputRef} className="hidden" accept="audio/*,video/*,.m4a,.mp3,.wav" onChange={handleFileUpload} />
                     <button onClick={() => fileInputRef.current?.click()} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-blue-50 text-blue-600 flex items-center gap-1 shadow-sm" title="音声ファイルをアップロード">
-                        <Upload size={12} /> ファイル
+                        <Upload size={12} /> 音声ファイル
                     </button>
                     <button onClick={onAddTextBlock} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-blue-50 text-blue-600 flex items-center gap-1 shadow-sm" title="テキストブロックを追加">
                         <Type size={12} /> テキスト追加

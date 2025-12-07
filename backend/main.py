@@ -21,6 +21,8 @@ app.include_router(stt.router, prefix="/api/stt", tags=["stt"])
 app.include_router(llm.router, prefix="/api/llm", tags=["llm"])
 app.include_router(data.router, prefix="/api/data", tags=["data"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
+from app.api.endpoints import system
+app.include_router(system.router, prefix="/api/system", tags=["system"])
 
 @app.get("/")
 def read_root():

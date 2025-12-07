@@ -9,6 +9,7 @@ class TranscriptionBlockBase(BaseModel):
     is_checked: bool = True
     duration: Optional[str] = None
     file_name: Optional[str] = None
+    timestamp: Optional[str] = None # Added for JST display string
 
 class TranscriptionBlockCreate(TranscriptionBlockBase):
     session_id: str
@@ -21,6 +22,7 @@ class TranscriptionBlock(TranscriptionBlockBase):
     id: str
     session_id: str
     created_at: datetime
+    timestamp: Optional[str] = None
 
 
     class Config:

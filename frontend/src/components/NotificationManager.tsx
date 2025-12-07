@@ -12,9 +12,10 @@ export interface TaskStatus {
 interface NotificationManagerProps {
     tasks: TaskStatus[];
     onDismiss: (id: string) => void;
+    config?: any;
 }
 
-export const NotificationManager: React.FC<NotificationManagerProps> = ({ tasks, onDismiss }) => {
+export const NotificationManager: React.FC<NotificationManagerProps> = ({ tasks, onDismiss, config }) => {
     // Current time state for ticking timers
     const [now, setNow] = useState(Date.now());
 
@@ -24,38 +25,49 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ tasks,
         return () => clearInterval(interval);
     }, []);
 
-    if (tasks.length === 0) return null;
+    // Filter tasks based on config
+    const visibleTasks = tasks.filter(t => {
+        if (!config) return true;
+
+        const typeConfig = config[t.type];
+        if (typeConfig && typeConfig.enabled === false) {
+            return false;
+        }
+        return true;
+    });
+
+    if (visibleTasks.length === 0) return null;
 
     return (
         <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 w-80 pointer-events-none">
-            {tasks.map(task => {
+            {visibleTasks.map(task => {
                 const durationMs = (task.endTime || now) - task.startTime;
                 const durationSec = Math.floor(durationMs / 1000);
                 const minutes = Math.floor(durationSec / 60);
                 const seconds = durationSec % 60;
                 const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-                let bgColor = 'bg-white';
+                let bgColor = 'bg-gray-50'; // Processing: Gray
                 let borderColor = 'border-gray-200';
-                let icon = <Loader2 size={20} className="animate-spin text-blue-500" />;
+                let icon = <Loader2 size={16} className="animate-spin text-gray-500" />;
                 let title = "処理中...";
 
                 if (task.type === 'success') {
-                    bgColor = 'bg-green-50';
+                    bgColor = 'bg-green-50'; // Success: Green
                     borderColor = 'border-green-200';
-                    icon = <CheckCircle size={20} className="text-green-500" />;
+                    icon = <CheckCircle size={16} className="text-green-500" />;
                     title = "完了";
                 } else if (task.type === 'error') {
-                    bgColor = 'bg-red-50';
+                    bgColor = 'bg-red-50'; // Error: Red
                     borderColor = 'border-red-200';
-                    icon = <AlertCircle size={20} className="text-red-500" />;
+                    icon = <AlertCircle size={16} className="text-red-500" />;
                     title = "エラー";
                 }
 
                 return (
                     <div
                         key={task.id}
-                        className={`pointer-events-auto p-4 rounded-lg border ${borderColor} ${bgColor} shadow-lg flex flex-col gap-2 transition-all animate-in slide-in-from-right fade-in duration-300`}
+                        className={`pointer-events-auto px-3 py-2 rounded border ${borderColor} ${bgColor} shadow flex flex-col gap-0.5 transition-all animate-in slide-in-from-right fade-in duration-300`}
                     >
                         <div className="flex items-start justify-between">
                             <div className="flex items-center gap-2 font-medium text-gray-800">

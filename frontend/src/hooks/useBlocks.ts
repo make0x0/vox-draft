@@ -7,12 +7,12 @@ export const useBlocks = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchBlocks = useCallback(async (sessionId: string) => {
+    const fetchBlocks = useCallback(async (sessionId: string, background = false) => {
         if (!sessionId) {
             setBlocks([]);
             return;
         }
-        setIsLoading(true);
+        if (!background) setIsLoading(true);
         try {
             // Note: backend endpoint is not yet explicit for blocks listing in sessions.py
             // sessions.py get_session returns session WITH blocks.
@@ -28,7 +28,8 @@ export const useBlocks = () => {
                 id: b.id,
                 type: b.type,
                 text: b.text || '',
-                timestamp: new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                // Use backend provided timestamp (JST string) or fallback to parsing created_at as UTC
+                timestamp: b.timestamp || new Date(b.created_at + (b.created_at.endsWith('Z') ? '' : 'Z')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 isChecked: b.is_checked,
                 duration: b.duration,
                 fileName: b.file_name

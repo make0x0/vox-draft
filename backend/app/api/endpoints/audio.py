@@ -48,7 +48,7 @@ def upload_audio_file(
         session_id=session_id,
         type="audio",
         file_path=file_path,
-        text="(Audio uploaded, waiting for transcription...)",
+        text="(Transcription queued...)",
         timestamp=datetime.now(tz).strftime("%H:%M:%S")
     )
     db.add(block)
