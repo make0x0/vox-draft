@@ -8,3 +8,38 @@ body,
 #root {
   height: 100%;
 }
+
+/* iPad responsive styles */
+/* iPad mini A17 landscape (1133x744) and iPad Pro 13" landscape (1366x1024) */
+@media screen and (min-width: 744px) and (max-width: 1400px) {
+  /* Ensure flexible layout for tablets */
+  .flex-shrink-0 {
+    flex-shrink: 1 !important;
+  }
+  
+  /* Minimum widths for panels on tablets */
+  aside {
+    min-width: 200px !important;
+    max-width: 280px !important;
+  }
+}
+
+/* iPad mini landscape (smaller screen) */
+@media screen and (min-width: 744px) and (max-width: 1024px) {
+  aside {
+    min-width: 180px !important;
+    max-width: 220px !important;
+  }
+}
+
+/* Prevent overflow on all tablet sizes */
+@media screen and (max-width: 1400px) {
+  .overflow-hidden {
+    overflow: hidden !important;
+  }
+  
+  /* Ensure main content doesn't overflow */
+  main {
+    min-width: 0 !important;
+  }
+}

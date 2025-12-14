@@ -58,6 +58,21 @@ export default function App() {
     }
   }, [selectedSessionId, fetchBlocks]); // Removed sessions from dep array if not needed
 
+  // Restore last session on initial load
+  useEffect(() => {
+    const lastSessionId = settingsData.generalSettings?.last_session_id;
+    if (lastSessionId && sessions.length > 0 && !selectedSessionId) {
+      // Check if the last session still exists
+      const sessionExists = sessions.find(s => s.id === lastSessionId && !s.isDeleted);
+      if (sessionExists) {
+        // Use setTimeout to avoid state update during render
+        setTimeout(() => {
+          setSelectedSessionId(lastSessionId);
+        }, 0);
+      }
+    }
+  }, [settingsData.generalSettings?.last_session_id, sessions, selectedSessionId]);
+
   // UI State
   const [isPromptRecording] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -540,6 +555,9 @@ export default function App() {
 
   const handleDisplaySession = async (sessionId: string) => {
     setSelectedSessionId(sessionId);
+
+    // Save last selected session to server settings (for session restore on reload)
+    settingsData.updateGeneralSettings({ last_session_id: sessionId });
 
     // Fetch Revisions
     const revs = await fetchRevisions(sessionId);
