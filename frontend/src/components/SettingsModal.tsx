@@ -44,6 +44,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const [editingTemplate, setEditingTemplate] = useState<{ title: string; content: string } | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
+    // Connection Test State
+    const [sttTestStatus, setSttTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+    const [sttTestMessage, setSttTestMessage] = useState<string>('');
+    const [llmTestStatus, setLlmTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+    const [llmTestMessage, setLlmTestMessage] = useState<string>('');
+
     // Sync editing state when selection changes
     React.useEffect(() => {
         if (selectedTemplateId) {
@@ -499,30 +505,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 : `Endpoint: ${apiConfig.stt.azure_endpoint || apiConfig.stt.url}`}
                                         </div>
 
-                                        <div className="col-span-2 mt-2 flex justify-end">
-                                            <button
-                                                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300 transition-colors"
-                                                onClick={async () => {
-                                                    const provider = (generalSettings as any).stt_provider || 'openai';
-                                                    try {
-                                                        console.log("Testing STT connection for", provider);
-                                                        await client.post('/api/settings/test', {
-                                                            provider: provider,
-                                                            openai_api_key: (generalSettings as any).openai_api_key,
-                                                            azure_openai_api_key: (generalSettings as any).azure_openai_api_key,
-                                                            azure_openai_endpoint: (generalSettings as any).azure_openai_endpoint,
-                                                            azure_openai_ad_token: (generalSettings as any).azure_openai_ad_token,
-                                                            gemini_api_key: (generalSettings as any).gemini_api_key,
-                                                        });
-                                                        alert("STT 接続テスト成功: " + provider);
-                                                    } catch (e: any) {
-                                                        console.error(e);
-                                                        alert("STT 接続テスト失敗: " + (e.response?.data?.message || e.message));
-                                                    }
-                                                }}
-                                            >
-                                                接続テスト ({((generalSettings as any).stt_provider || 'openai')})
-                                            </button>
+                                        <div className="col-span-2 mt-2 flex flex-col items-end gap-1">
+                                            <div className="flex items-center gap-2">
+                                                {sttTestStatus !== 'idle' && (
+                                                    <span className={`text-xs ${sttTestStatus === 'success' ? 'text-green-600' : sttTestStatus === 'error' ? 'text-red-500' : 'text-gray-500'}`}>
+                                                        {sttTestStatus === 'testing' ? '接続テスト中...' : sttTestMessage}
+                                                    </span>
+                                                )}
+                                                <button
+                                                    className={`px-3 py-1 rounded text-xs transition-colors ${sttTestStatus === 'testing' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                                    disabled={sttTestStatus === 'testing'}
+                                                    onClick={async () => {
+                                                        const provider = (generalSettings as any).stt_provider || 'openai';
+                                                        setSttTestStatus('testing');
+                                                        setSttTestMessage('');
+                                                        try {
+                                                            console.log("Testing STT connection for", provider);
+                                                            const res = await client.post('/api/settings/test', {
+                                                                provider: provider,
+                                                                openai_api_key: (generalSettings as any).openai_api_key,
+                                                                azure_openai_api_key: (generalSettings as any).azure_openai_api_key,
+                                                                azure_openai_endpoint: (generalSettings as any).azure_openai_endpoint,
+                                                                azure_openai_ad_token: (generalSettings as any).azure_openai_ad_token,
+                                                                gemini_api_key: (generalSettings as any).gemini_api_key,
+                                                            });
+
+                                                            if (res.data.ok) {
+                                                                setSttTestStatus('success');
+                                                                setSttTestMessage(`接続成功 (${provider})`);
+                                                                setTimeout(() => setSttTestStatus('idle'), 3000);
+                                                            } else {
+                                                                setSttTestStatus('error');
+                                                                setSttTestMessage(`接続失敗: ${res.data.message}`);
+                                                            }
+                                                        } catch (e: any) {
+                                                            console.error(e);
+                                                            setSttTestStatus('error');
+                                                            setSttTestMessage(`接続失敗: ${e.response?.data?.message || e.message}`);
+                                                        }
+                                                    }}
+                                                >
+                                                    接続テスト ({((generalSettings as any).stt_provider || 'openai')})
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -611,31 +636,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 ? `Model: ${(generalSettings as any).llm_gemini_model || "gemini-1.5-flash"}`
                                                 : `Endpoint: ${apiConfig.llm.azure_deployment || apiConfig.llm.model}`}
                                         </div>
-                                        <div className="col-span-2 mt-2 flex justify-end">
-                                            <button
-                                                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300 transition-colors"
-                                                onClick={async () => {
-                                                    const provider = (generalSettings as any).llm_provider || 'openai';
-                                                    try {
-                                                        // Show loading toast?
-                                                        console.log("Testing connection for", provider);
-                                                        await client.post('/api/settings/test', {
-                                                            provider: provider,
-                                                            openai_api_key: (generalSettings as any).openai_api_key,
-                                                            azure_openai_api_key: (generalSettings as any).azure_openai_api_key,
-                                                            azure_openai_endpoint: (generalSettings as any).azure_openai_endpoint,
-                                                            azure_openai_ad_token: (generalSettings as any).azure_openai_ad_token,
-                                                            gemini_api_key: (generalSettings as any).gemini_api_key,
-                                                        });
-                                                        alert("接続テスト成功: " + provider);
-                                                    } catch (e: any) {
-                                                        console.error(e);
-                                                        alert("接続テスト失敗: " + (e.response?.data?.message || e.message));
-                                                    }
-                                                }}
-                                            >
-                                                接続テスト ({((generalSettings as any).llm_provider || 'openai')})
-                                            </button>
+                                        <div className="col-span-2 mt-2 flex flex-col items-end gap-1">
+                                            <div className="flex items-center gap-2">
+                                                {llmTestStatus !== 'idle' && (
+                                                    <span className={`text-xs ${llmTestStatus === 'success' ? 'text-green-600' : llmTestStatus === 'error' ? 'text-red-500' : 'text-gray-500'}`}>
+                                                        {llmTestStatus === 'testing' ? '接続テスト中...' : llmTestMessage}
+                                                    </span>
+                                                )}
+                                                <button
+                                                    className={`px-3 py-1 rounded text-xs transition-colors ${llmTestStatus === 'testing' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                                    disabled={llmTestStatus === 'testing'}
+                                                    onClick={async () => {
+                                                        const provider = (generalSettings as any).llm_provider || 'openai';
+                                                        setLlmTestStatus('testing');
+                                                        setLlmTestMessage('');
+                                                        try {
+                                                            console.log("Testing LLM connection for", provider);
+                                                            const res = await client.post('/api/settings/test', {
+                                                                provider: provider,
+                                                                openai_api_key: (generalSettings as any).openai_api_key,
+                                                                azure_openai_api_key: (generalSettings as any).azure_openai_api_key,
+                                                                azure_openai_endpoint: (generalSettings as any).azure_openai_endpoint,
+                                                                azure_openai_ad_token: (generalSettings as any).azure_openai_ad_token,
+                                                                gemini_api_key: (generalSettings as any).gemini_api_key,
+                                                            });
+
+                                                            if (res.data.ok) {
+                                                                setLlmTestStatus('success');
+                                                                setLlmTestMessage(`接続成功 (${provider})`);
+                                                                setTimeout(() => setLlmTestStatus('idle'), 3000);
+                                                            } else {
+                                                                setLlmTestStatus('error');
+                                                                setLlmTestMessage(`接続失敗: ${res.data.message}`);
+                                                            }
+                                                        } catch (e: any) {
+                                                            console.error(e);
+                                                            setLlmTestStatus('error');
+                                                            setLlmTestMessage(`接続失敗: ${e.response?.data?.message || e.message}`);
+                                                        }
+                                                    }}
+                                                >
+                                                    接続テスト ({((generalSettings as any).llm_provider || 'openai')})
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

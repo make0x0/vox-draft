@@ -32,20 +32,33 @@ def test_connection(request: settings_schema.TestConnectionRequest):
             return {"ok": True, "message": "Successfully connected to OpenAI."}
 
         elif provider == "azure":
-            endpoint = request.azure_openai_endpoint or app_settings.LLM_AZURE_ENDPOINT # or STT
+            # Strict check: If user sends empty strings, we should NOT fall back to app_settings
+            # unless the intention is to "test current effective settings".
+            
+            endpoint = request.azure_openai_endpoint
+            if not endpoint and request.azure_openai_endpoint is not None:
+                 # It was passed as empty string
+                 raise ValueError("Azure Endpoint is empty.")
+            
+            if not endpoint:
+                 # Fallback only if None (not passed)
+                 endpoint = app_settings.LLM_AZURE_ENDPOINT
+            
             if not endpoint:
                 raise ValueError("Azure Endpoint is missing.")
-            
-            # Auth priority: AD Token > API Key
+
             ad_token = request.azure_openai_ad_token
             api_key = request.azure_openai_api_key
             
-            # Use default from env/settings if not provided in request
-            if not ad_token and not api_key:
-                ad_token = app_settings.AZURE_OPENAI_AD_TOKEN
-                api_key = app_settings.AZURE_OPENAI_API_KEY
+            # If both are empty strings?
+            if (ad_token == "") and (api_key == ""):
+                 raise ValueError("Azure API Key or AD Token is required.")
+
+            # Fallback only if None
+            if ad_token is None: ad_token = app_settings.AZURE_OPENAI_AD_TOKEN
+            if api_key is None: api_key = app_settings.AZURE_OPENAI_API_KEY
             
-            api_version = app_settings.LLM_AZURE_API_VERSION # Default version
+            api_version = app_settings.LLM_AZURE_API_VERSION
             
             if ad_token:
                 client = AzureOpenAI(
@@ -65,7 +78,7 @@ def test_connection(request: settings_schema.TestConnectionRequest):
                 )
             else:
                  raise ValueError("Azure API Key or AD Token is required.")
-                 
+
             # Lightweight check? Azure sometimes restricts models.list
             # Try correct one
             try:
