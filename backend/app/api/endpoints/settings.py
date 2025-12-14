@@ -107,3 +107,18 @@ def test_connection(request: settings_schema.TestConnectionRequest):
     except Exception as e:
         print(f"Connection Test Failed: {e}")
         return {"ok": False, "message": f"Connection Failed: {str(e)}"}
+
+@router.get("/models/{provider}")
+def get_provider_models(provider: str):
+    """
+    Fetch available models for a specific provider.
+    Currently only supports 'gemini'.
+    """
+    if provider == "gemini":
+        from app.services.gemini_service import gemini_service
+        models = gemini_service.get_available_models()
+        return {"models": models}
+    
+    # For others, return empty or default?
+    # OpenAI/Azure usually don't have a simple public list API without auth or complex parsing
+    return {"models": []}

@@ -129,8 +129,26 @@ class GeminiService:
                 full_text += chunk
             return full_text
         except Exception as e:
-             # If stream fails, maybe try direct generate?
-             # For now reuse stream logic for consistency
+            # For now reuse stream logic for consistency
              raise e
+
+    def get_available_models(self) -> list[str]:
+        """
+        Fetches available models from Gemini API that support content generation.
+        Returns a list of model names (e.g., "gemini-1.5-flash").
+        """
+        try:
+            self._configure() # Ensure configured with latest keys
+            models = []
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    # m.name is like "models/gemini-1.5-flash"
+                    # We want just "gemini-1.5-flash"
+                    name = m.name.replace("models/", "")
+                    models.append(name)
+            return sorted(models)
+        except Exception as e:
+            print(f"Error fetching Gemini models: {e}")
+            return []
 
 gemini_service = GeminiService()

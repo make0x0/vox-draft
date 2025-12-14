@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, X, Plus, Trash2, Database, Download, Upload, HardDrive, FileArchive, Save, RotateCcw, AlertTriangle, FileUp } from 'lucide-react';
 import { client } from '../api/client';
 import { useSettingsData } from '../hooks/useSettingsData';
@@ -49,6 +49,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const [sttTestMessage, setSttTestMessage] = useState<string>('');
     const [llmTestStatus, setLlmTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [llmTestMessage, setLlmTestMessage] = useState<string>('');
+
+    // Dynamic Models State
+    const [geminiModels, setGeminiModels] = useState<string[]>([]);
+
+    useEffect(() => {
+        const fetchModels = async () => {
+            if ((generalSettings as any).stt_provider === 'gemini' || (generalSettings as any).llm_provider === 'gemini') {
+                try {
+                    const res = await client.get('/api/settings/models/gemini');
+                    if (res.data.models && res.data.models.length > 0) {
+                        setGeminiModels(res.data.models);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch Gemini models", e);
+                }
+            }
+        };
+        fetchModels();
+    }, [(generalSettings as any).stt_provider, (generalSettings as any).llm_provider]);
 
     // Sync editing state when selection changes
     React.useEffect(() => {
@@ -483,11 +502,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                     onChange={(e) => setGeneralSettings({ ...generalSettings, stt_gemini_model: e.target.value } as any)}
                                                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                                                 >
-                                                    {((generalSettings as any).gemini_models || ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash"]).map((m: string) => (
+                                                    {(geminiModels.length > 0
+                                                        ? geminiModels
+                                                        : ((generalSettings as any).gemini_models || ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash"])
+                                                    ).map((m: string) => (
                                                         <option key={m} value={m}>{m}</option>
                                                     ))}
                                                 </select>
-                                                <div className="text-xs text-gray-500 mt-1">設定ファイル(settings.yaml)から選択</div>
+                                                <div className="text-xs text-gray-500 mt-1">
+                                                    {geminiModels.length > 0 ? "APIから取得したモデルリスト" : "設定ファイル(settings.yaml)から選択"}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -618,7 +642,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                     onChange={(e) => setGeneralSettings({ ...generalSettings, llm_gemini_model: e.target.value } as any)}
                                                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                                                 >
-                                                    {((generalSettings as any).gemini_models || ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash"]).map((m: string) => (
+                                                    {(geminiModels.length > 0
+                                                        ? geminiModels
+                                                        : ((generalSettings as any).gemini_models || ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash"])
+                                                    ).map((m: string) => (
                                                         <option key={m} value={m}>{m}</option>
                                                     ))}
                                                 </select>
