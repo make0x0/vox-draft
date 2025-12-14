@@ -77,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     return (
         <aside
-            className="bg-white border-r border-gray-200 flex flex-col flex-shrink-0 z-20 shadow-sm h-full"
+            className="bg-white border-r border-gray-200 flex flex-col flex-shrink-0 z-20 shadow-sm h-full overflow-hidden"
             style={{ width: width }}
         >
             <div className="p-3 border-b border-gray-200 bg-gray-50 flex flex-col gap-2">

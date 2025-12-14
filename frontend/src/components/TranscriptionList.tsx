@@ -65,7 +65,7 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
     const expandedBlock = blocks.find(b => b.id === expandedBlockId);
 
     return (
-        <section className="flex-1 flex flex-col border-r border-gray-200 bg-white min-w-[300px]">
+        <section className="flex-1 flex flex-col border-r border-gray-200 bg-white min-w-[300px] h-full overflow-hidden">
             <div className="p-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                 <h2 className="text-sm font-bold text-gray-600 flex items-center gap-2">
                     <Mic size={16} /> 認識結果リスト

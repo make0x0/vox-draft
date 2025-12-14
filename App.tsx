@@ -308,7 +308,7 @@ export default function App() {
         <div className="flex h-screen w-full bg-gray-100 text-gray-800 font-sans overflow-hidden">
 
             {/* --- Left Pane: History --- */}
-            <aside className="w-80 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 z-20 shadow-sm">
+            <aside className="w-80 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 z-20 shadow-sm h-full overflow-hidden">
                 <div className="p-3 border-b border-gray-200 bg-gray-50 flex flex-col gap-2">
                     <div className="flex justify-between items-center">
                         <h2 className="text-sm font-bold text-gray-600 flex items-center gap-2"><Book size={16} /> 履歴</h2>
@@ -378,7 +378,7 @@ export default function App() {
                 <div className="flex-1 flex min-h-0">
 
                     {/* --- Center Pane: Transcription List --- */}
-                    <section className="flex-1 flex flex-col border-r border-gray-200 bg-white min-w-[300px]">
+                    <section className="flex-1 flex flex-col border-r border-gray-200 bg-white min-w-[300px] h-full overflow-hidden">
                         <div className="p-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                             <h2 className="text-sm font-bold text-gray-600 flex items-center gap-2">
                                 <Mic size={16} />

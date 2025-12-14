@@ -39,7 +39,7 @@ export const Editor: React.FC<EditorProps> = ({
 
     return (
         <section
-            className="flex flex-col bg-white flex-shrink-0"
+            className="flex flex-col bg-white flex-shrink-0 h-full overflow-hidden"
             style={{ width: width }}
         >
             <div className="p-2 border-b border-gray-200 bg-gray-50 flex flex-col gap-2">
