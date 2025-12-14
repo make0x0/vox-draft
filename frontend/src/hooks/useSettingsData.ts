@@ -37,6 +37,8 @@ export const useSettingsData = () => {
         encoding: 'UTF-8',
         lineEnding: 'LF',
         promptStructure: `{system_prompt}\n\n<Context>\n{checked_transcribe_list}\n</Context>\n\n<CurrentContent>\n{recentry_output}\n</CurrentContent>\n\n<UserInstruction>\n{user_prompt}\n</UserInstruction>`,
+        // Block insert position: 'top' (newest first) or 'bottom' (oldest first)
+        block_insert_position: 'top',
         // Layout settings will be merged from device-specific storage
         ...defaultLayout
     });

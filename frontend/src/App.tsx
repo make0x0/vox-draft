@@ -730,7 +730,7 @@ export default function App() {
               <div className="flex-1 overflow-hidden flex flex-col">
                 {(selectedSessionId && !blocksLoading) ? (
                   <TranscriptionList
-                    blocks={blocks}
+                    blocks={generalSettings.block_insert_position === 'top' ? [...blocks].reverse() : blocks}
                     setBlocks={handleSetBlocks}
                     onAddTextBlock={handleAddTextBlock}
                     onUploadFile={handleFileUpload}

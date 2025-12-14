@@ -412,6 +412,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             <option value="LF">LF (\n)</option><option value="CRLF">CRLF (\r\n)</option>
                                         </select>
                                     </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">ブロック挿入位置</label>
+                                        <select
+                                            value={generalSettings.block_insert_position || 'top'}
+                                            onChange={(e) => setGeneralSettings({ ...generalSettings, block_insert_position: e.target.value })}
+                                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                        >
+                                            <option value="top">上部 (新しいものが上)</option>
+                                            <option value="bottom">下部 (新しいものが下)</option>
+                                        </select>
+                                    </div>
                                     <div className="col-span-2">
                                         <label className="block text-sm font-medium text-gray-700 mb-1">プロンプト構成 (上級者向け)</label>
                                         <div className="text-xs text-gray-500 mb-2">
