@@ -772,6 +772,7 @@ export default function App() {
             onLoadRevision={handleLoadRevision}
             onSaveRevision={() => handleSaveRevision("Manual Save")}
             onDeleteRevision={handleDeleteRevision}
+            isBusy={isGenerating}
           />
         </div>
 

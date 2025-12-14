@@ -15,6 +15,8 @@ interface EditorProps {
     onLoadRevision?: (index: number) => void;
     onSaveRevision?: () => void; // Used for "Create Revision" or "Restore"
     onDeleteRevision?: () => void;
+    // Locking
+    isBusy?: boolean;
 }
 
 export const Editor: React.FC<EditorProps> = ({
@@ -25,7 +27,8 @@ export const Editor: React.FC<EditorProps> = ({
     currentRevisionIndex = -1,
     onLoadRevision,
     onSaveRevision,
-    onDeleteRevision
+    onDeleteRevision,
+    isBusy = false
 }) => {
     const [editorMode, setEditorMode] = useState<'write' | 'preview' | 'diff'>('write');
     const [showSaveMenu, setShowSaveMenu] = useState(false);
@@ -38,8 +41,8 @@ export const Editor: React.FC<EditorProps> = ({
     const currentRev = (currentRevisionIndex >= 0 && revisions.length > 0) ? revisions[currentRevisionIndex] : null;
     const isLatest = currentRevisionIndex === 0 || currentRevisionIndex === -1;
 
-    // Read-only if viewing past revision
-    const isReadOnly = !isLatest;
+    // Read-only if viewing past revision OR busy
+    const isReadOnly = !isLatest || isBusy;
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -179,13 +182,21 @@ export const Editor: React.FC<EditorProps> = ({
             </div>
 
             <div className="flex-1 relative overflow-hidden">
+                {isBusy && (
+                    <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                        <div className="bg-white px-4 py-2 rounded-lg shadow-lg border border-blue-100 flex items-center gap-3 animate-in fade-in zoom-in duration-200">
+                            <RefreshCw size={20} className="animate-spin text-blue-600" />
+                            <span className="text-sm font-bold text-gray-700">AIが生成中...</span>
+                        </div>
+                    </div>
+                )}
                 {editorMode === 'write' ? (
                     <textarea
                         readOnly={isReadOnly}
-                        className={`w-full h-full p-6 resize-none focus:outline-none font-mono text-sm leading-relaxed text-gray-800 ${isReadOnly ? 'bg-gray-100 text-gray-500 cursor-default' : 'bg-white'}`}
+                        className={`w-full h-full p-6 resize-none focus:outline-none font-mono text-sm leading-relaxed text-gray-800 ${isReadOnly ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
-                        placeholder={isReadOnly ? "過去のリビジョンは編集できません。" : "# ここに生成結果が表示されます..."}
+                        placeholder={isReadOnly ? (isBusy ? "AIが生成中です..." : "過去のリビジョンは編集できません。") : "# ここに生成結果が表示されます..."}
                     />
                 ) : editorMode === 'preview' ? (
                     <div className={`w-full h-full p-6 overflow-y-auto ${isReadOnly ? 'bg-gray-50' : 'bg-white'}`}>
