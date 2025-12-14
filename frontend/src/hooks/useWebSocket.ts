@@ -4,8 +4,20 @@ import { useEffect, useRef, useCallback } from 'react';
 const getWsUrl = (): string => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const hostname = window.location.hostname;
-    const port = '8000'; // Backend port
-    return `${protocol}//${hostname}:${port}/ws`;
+    const port = window.location.port;
+
+    // Check if we're behind nginx (ports 80, 443, or empty)
+    if (port === '' || port === '80' || port === '443') {
+        // Connect via nginx proxy
+        const url = `${protocol}//${window.location.host}/ws`;
+        console.log('[WebSocket] Using nginx proxy:', url);
+        return url;
+    }
+
+    // Direct connection (development on port 5173)
+    const url = `${protocol}//${hostname}:8000/ws`;
+    console.log('[WebSocket] Direct connection:', url);
+    return url;
 };
 
 export interface SyncMessage {

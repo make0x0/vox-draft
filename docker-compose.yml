@@ -10,6 +10,7 @@ services:
       - "80:80"
     volumes:
       - certs:/etc/nginx/certs
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     environment:
       - CERT_HOSTS=localhost,vox-draft
       - CERT_IPS=127.0.0.1,192.168.0.55
