@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Save, X, Plus, Trash2, Database, Download, Upload, HardDrive, FileArchive } from 'lucide-react';
+import { Settings, X, Plus, Trash2, Database, Download, Upload, HardDrive, FileArchive } from 'lucide-react';
 import type { PromptTemplate, VocabularyItem, ApiConfig } from '../types';
 
 export interface SettingsModalProps {
@@ -52,6 +52,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }
     }, [selectedTemplateId, templates]);
 
+    // Auto-save debouncer
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            if (selectedTemplateId && editingTemplate) {
+                const original = templates.find(t => t.id === selectedTemplateId);
+                if (original && (original.title !== editingTemplate.title || original.content !== editingTemplate.content)) {
+                    saveCurrentTemplate();
+                }
+            }
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, [editingTemplate, selectedTemplateId, templates]);
+
     // Data Management
     // Initialize dates to today
     const today = new Date().toISOString().split('T')[0];
@@ -97,10 +110,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setIsSaving(true);
         try {
             await onUpdateTemplate({ id: selectedTemplateId, ...editingTemplate });
-            // alert("保存しました"); // Optional feedback
         } catch (e) {
             console.error(e);
-            alert("保存に失敗しました");
         } finally {
             setIsSaving(false);
         }
@@ -360,7 +371,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden">
                 <div className="flex justify-between items-center p-4 border-b bg-gray-50">
                     <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Settings size={20} /> 設定</h3>
-                    <div className="flex gap-2"><button onClick={onClose} className="px-4 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded shadow-sm flex items-center gap-2"><Save size={14} /> 保存</button><button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1.5 rounded-full hover:bg-gray-200"><X size={20} /></button></div>
+                    <div className="flex gap-2 items-center">
+                        {isSaving && <span className="text-xs text-blue-600 animate-pulse">保存中...</span>}
+                        <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1.5 rounded-full hover:bg-gray-200"><X size={20} /></button>
+                    </div>
                 </div>
                 <div className="flex flex-1 overflow-hidden">
                     <div className="w-48 bg-gray-100 border-r border-gray-200 flex flex-col p-2 gap-1">
@@ -451,7 +465,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <div className="w-1/3 border border-gray-200 rounded flex flex-col">
                                     <div className="p-2 border-b bg-gray-50 flex justify-between items-center"><span className="text-xs font-bold text-gray-500">テンプレート一覧</span><button onClick={addNewTemplate} className="text-blue-600 hover:bg-blue-100 p-1 rounded"><Plus size={16} /></button></div>
                                     <div className="flex-1 overflow-y-auto">
-                                        {templates.map(t => (<div key={t.id} onClick={() => setSelectedTemplateId(t.id)} className={`p-3 border-b text-sm cursor-pointer hover:bg-gray-50 ${selectedTemplateId === t.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}`}><div className="font-medium truncate">{t.title}</div></div>))}
+                                        {/* System Templates Group */}
+                                        <div className="bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 border-b">システム (削除不可)</div>
+                                        {templates.filter(t => t.is_system).map(t => (
+                                            <div key={t.id} onClick={() => setSelectedTemplateId(t.id)} className={`p-3 border-b text-sm cursor-pointer hover:bg-gray-50 ${selectedTemplateId === t.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}`}>
+                                                <div className="font-medium truncate flex items-center gap-2">
+                                                    {t.title}
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {/* User Templates Group */}
+                                        <div className="bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 border-b border-t mt-0">ユーザー定義</div>
+                                        {templates
+                                            .filter(t => !t.is_system)
+                                            .sort((a, b) => a.title.localeCompare(b.title, 'ja'))
+                                            .map(t => (
+                                                <div key={t.id} onClick={() => setSelectedTemplateId(t.id)} className={`p-3 border-b text-sm cursor-pointer hover:bg-gray-50 ${selectedTemplateId === t.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}`}>
+                                                    <div className="font-medium truncate">{t.title}</div>
+                                                </div>
+                                            ))}
+                                        {templates.length === 0 && <div className="p-4 text-center text-xs text-gray-500">テンプレートがありません</div>}
                                     </div>
                                 </div>
                                 <div className="flex-1 flex flex-col gap-4">
@@ -467,9 +501,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                         onChange={(e) => handleTemplateChange('title', e.target.value)}
                                                         disabled={isSaving}
                                                     />
-                                                    <button onClick={saveCurrentTemplate} disabled={isSaving} className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 flex items-center gap-1">
-                                                        <Save size={14} /> 保存
-                                                    </button>
                                                 </div>
                                             </div>
                                             <div className="flex-1 flex flex-col">
@@ -482,9 +513,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 />
                                             </div>
                                             <div className="flex justify-end pt-2">
-                                                <button onClick={() => deleteCurrentTemplate(selectedTemplateId)} disabled={isSaving} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1">
-                                                    <Trash2 size={14} /> 削除
-                                                </button>
+                                                {templates.find(t => t.id === selectedTemplateId)?.is_system ? (
+                                                    <div className="text-xs text-gray-400 italic flex items-center gap-1">※ システムテンプレートは削除できません</div>
+                                                ) : (
+                                                    <button onClick={() => deleteCurrentTemplate(selectedTemplateId)} disabled={isSaving} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1">
+                                                        <Trash2 size={14} /> 削除
+                                                    </button>
+                                                )}
                                             </div>
                                         </>
                                     ) : <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">左側から選択してください</div>}

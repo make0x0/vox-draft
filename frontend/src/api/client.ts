@@ -32,5 +32,13 @@ export const endpoints = {
             delete: (blockId: string) => `/api/sessions/blocks/${blockId}`,
             update: (blockId: string) => `/api/sessions/blocks/${blockId}`,
         }
+    },
+    templates: {
+        list: '/api/templates/',
+        detail: (id: string) => `/api/templates/${id}`,
+    },
+    vocabulary: {
+        list: '/api/vocabulary/',
+        detail: (id: string) => `/api/vocabulary/${id}`,
     }
 };

@@ -159,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="p-4 border-t border-gray-200 flex gap-2">
                 <button onClick={onOpenSettings} className="flex-1 flex items-center justify-center gap-2 text-sm text-gray-600 hover:text-gray-900 p-2 rounded hover:bg-gray-100 transition-colors bg-white border border-gray-200 shadow-sm"><Settings size={16} /><span>設定</span></button>
-                <button onClick={onResetLayout} className="p-2 text-gray-400 hover:text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-100 shadow-sm" title="レイアウトをリセット">
+                <button onClick={onResetLayout} className="p-2 text-gray-400 hover:text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-100 shadow-sm" title="画面のレイアウトがリセットされます">
                     <RotateCcw size={16} />
                 </button>
             </div>

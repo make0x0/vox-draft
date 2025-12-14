@@ -12,20 +12,14 @@ export const useSettingsData = () => {
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            // Parallel fetch
+            // Parallel fetch using client
             const [templatesRes, vocabRes] = await Promise.all([
-                fetch(`http://localhost:8000/api/templates/`),
-                fetch(`http://localhost:8000/api/vocabulary/`)
+                client.get(endpoints.templates.list),
+                client.get(endpoints.vocabulary.list)
             ]);
 
-            if (!templatesRes.ok) throw new Error("Failed to fetch templates");
-            if (!vocabRes.ok) throw new Error("Failed to fetch vocabulary");
-
-            const templatesData = await templatesRes.json();
-            const vocabData = await vocabRes.json();
-
-            setTemplates(templatesData);
-            setVocabulary(vocabData);
+            setTemplates(templatesRes.data);
+            setVocabulary(vocabRes.data);
         } catch (e: any) {
             console.error("Error fetching settings data:", e);
             setError(e.message);
@@ -39,98 +33,79 @@ export const useSettingsData = () => {
     }, [fetchData]);
 
     // --- Templates CRUD ---
-    const addTemplate = async (template: { title: string; content: string }) => {
+    const addTemplate = useCallback(async (template: { title: string; content: string }) => {
         try {
-            const res = await fetch(`http://localhost:8000/api/templates/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(template)
-            });
-            if (!res.ok) throw new Error("Failed to create template");
-            const newTemplate = await res.json();
+            const res = await client.post(endpoints.templates.list, template);
+            const newTemplate = res.data;
             setTemplates(prev => [...prev, newTemplate]);
             return newTemplate;
         } catch (e) {
             console.error(e);
             throw e;
         }
-    };
+    }, []);
 
-    const updateTemplate = async (template: PromptTemplate) => {
+    const updateTemplate = useCallback(async (template: PromptTemplate) => {
         try {
-            const res = await fetch(`http://localhost:8000/api/templates/${template.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: template.title, content: template.content })
+            const res = await client.put(endpoints.templates.detail(template.id), {
+                title: template.title,
+                content: template.content,
+                is_system: template.is_system
             });
-            if (!res.ok) throw new Error("Failed to update template");
-            const updated = await res.json();
+            const updated = res.data;
             setTemplates(prev => prev.map(t => t.id === updated.id ? updated : t));
         } catch (e) {
             console.error(e);
             throw e;
         }
-    };
+    }, []);
 
-    const deleteTemplate = async (id: string) => {
+    const deleteTemplate = useCallback(async (id: string) => {
         try {
-            const res = await fetch(`http://localhost:8000/api/templates/${id}`, {
-                method: 'DELETE'
-            });
-            if (!res.ok) throw new Error("Failed to delete template");
+            await client.delete(endpoints.templates.detail(id));
             setTemplates(prev => prev.filter(t => t.id !== id));
         } catch (e) {
             console.error(e);
             throw e;
         }
-    };
+    }, []);
 
     // --- Vocabulary CRUD ---
-    const addVocabularyItem = async (item: { reading: string; word: string }) => {
+    const addVocabularyItem = useCallback(async (item: { reading: string; word: string }) => {
         try {
-            const res = await fetch(`http://localhost:8000/api/vocabulary/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(item)
-            });
-            if (!res.ok) throw new Error("Failed to create vocabulary item");
-            const newItem = await res.json();
+            const res = await client.post(endpoints.vocabulary.list, item);
+            const newItem = res.data;
             setVocabulary(prev => [...prev, newItem]);
             return newItem;
         } catch (e) {
             console.error(e);
             throw e;
         }
-    };
+    }, []);
 
-    const updateVocabularyItem = async (item: VocabularyItem) => {
+    const updateVocabularyItem = useCallback(async (item: VocabularyItem) => {
         try {
-            const res = await fetch(`http://localhost:8000/api/vocabulary/${item.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reading: item.reading, word: item.word })
+            const res = await client.put(endpoints.vocabulary.detail(item.id), {
+                reading: item.reading,
+                word: item.word
             });
-            if (!res.ok) throw new Error("Failed to update vocabulary item");
-            const updated = await res.json();
+            const updated = res.data;
             setVocabulary(prev => prev.map(v => v.id === updated.id ? updated : v));
         } catch (e) {
             console.error(e);
             throw e;
         }
-    };
+    }, []);
 
-    const deleteVocabularyItem = async (id: string) => {
+    const deleteVocabularyItem = useCallback(async (id: string) => {
         try {
-            const res = await fetch(`http://localhost:8000/api/vocabulary/${id}`, {
-                method: 'DELETE'
-            });
-            if (!res.ok) throw new Error("Failed to delete vocabulary item");
+            await client.delete(endpoints.vocabulary.detail(id));
             setVocabulary(prev => prev.filter(v => v.id !== id));
         } catch (e) {
             console.error(e);
             throw e;
         }
-    };
+    }, []);
 
     return {
         templates,

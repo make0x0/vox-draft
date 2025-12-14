@@ -20,6 +20,7 @@ export interface PromptTemplate {
     id: string;
     title: string;
     content: string;
+    is_system?: boolean;
 }
 
 export interface ApiConfig {

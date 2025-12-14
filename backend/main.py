@@ -31,3 +31,5 @@ app.include_router(revisions.router, prefix="/api", tags=["revisions"])
 def read_root():
     return {"Hello": "Vox Backend API"}
 
+
+# Trigger reload for config update

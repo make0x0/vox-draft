@@ -587,10 +587,12 @@ export default function App() {
   // Resizing State
   const [sidebarWidth, setSidebarWidth] = useLocalStorage('vox_sidebar_width', 300);
   const [editorWidth, setEditorWidth] = useLocalStorage('vox_editor_width', 350);
+  const [promptHeight, setPromptHeight] = useLocalStorage('vox_prompt_height', '80px');
 
   const handleResetLayout = () => {
     setSidebarWidth(300);
     setEditorWidth(350);
+    setPromptHeight('80px');
   };
 
   const isDraggingSidebar = useRef(false);
@@ -787,7 +789,20 @@ export default function App() {
               </div>
               <div className="flex gap-2 w-full">
                 <div className="relative flex-1 flex">
-                  <textarea className="w-full border border-gray-300 rounded-l-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-h-[42px] max-h-[400px] resize-y" placeholder="AIへの指示・プロンプトを入力..." value={promptText} onChange={(e) => setPromptText(e.target.value)} />
+                  <textarea
+                    className="w-full border border-gray-300 rounded-l-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-h-[42px] max-h-[400px] resize-y"
+                    placeholder="AIへの指示・プロンプトを入力..."
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
+                    style={{ height: promptHeight }}
+                    onMouseUp={(e) => {
+                      // Save height after resize
+                      const h = e.currentTarget.style.height;
+                      if (h && h !== promptHeight) {
+                        setPromptHeight(h);
+                      }
+                    }}
+                  />
                   <button onClick={handlePromptRecordToggle} className={`px-3 border-y border-r border-gray-300 rounded-r-lg hover:bg-gray-50 flex items-center justify-center transition-colors ${isPromptRecording ? 'text-red-500 bg-red-50 border-red-200' : 'text-gray-500'}`} title="音声で指示を追加"><Mic size={18} className={isPromptRecording ? "animate-pulse" : ""} /></button>
                 </div>
                 <button onClick={handleRunLLM} disabled={isGenerating} className={`bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-lg font-medium shadow-sm flex items-center gap-2 transition-colors h-auto ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}>
