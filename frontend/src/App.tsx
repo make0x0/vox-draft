@@ -23,7 +23,7 @@ import type {
 
 export default function App() {
   // --- State ---
-  const { sessions, fetchSessions, deleteSessions, updateSessionTitle, createSession, restoreSession, emptySessionTrash } = useSessions();
+  const { sessions, fetchSessions, deleteSessions, updateSessionTitle, createSession, restoreSession, emptySessionTrash, updateSessionColor } = useSessions();
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   const { blocks, isLoading: blocksLoading, addBlock, updateBlock, deleteBlock, fetchBlocks, setBlocks, restoreBlock, emptyTrash, toggleAllBlocks } = useBlocks();
@@ -647,6 +647,8 @@ export default function App() {
         width={sidebarWidth}
         onRestoreSession={restoreSession}
         onEmptyTrash={emptySessionTrash}
+        onColorChange={updateSessionColor}
+        selectedSessionId={selectedSessionId}
       />
 
       {/* Resize Handle Left */}

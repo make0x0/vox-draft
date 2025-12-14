@@ -17,6 +17,7 @@ export interface HistoryItem {
     isoDate: string;
     summary: string;
     isDeleted?: boolean; // Added for frontend logic
+    color?: string;
 }
 
 export interface PromptTemplate {

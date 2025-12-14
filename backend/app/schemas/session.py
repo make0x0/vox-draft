@@ -13,12 +13,14 @@ class SessionCreate(SessionBase):
 class SessionUpdate(BaseModel):
     title: Optional[str] = None
     summary: Optional[str] = None
+    color: Optional[str] = None
 
 class Session(SessionBase):
     id: str
     created_at: datetime
     updated_at: datetime
     is_deleted: bool = False
+    color: Optional[str] = None
     blocks: List[TranscriptionBlock] = []
 
     class Config:
@@ -30,6 +32,7 @@ class SessionList(BaseModel):
     summary: Optional[str]
     created_at: datetime
     is_deleted: bool = False
+    color: Optional[str] = None
     first_block_text: Optional[str] = None # For listing preview
 
     class Config:

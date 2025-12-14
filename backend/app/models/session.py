@@ -13,6 +13,7 @@ class Session(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_deleted = Column(Boolean, default=False)
+    color = Column(String, nullable=True, default=None)
     
     # Establish relationship
     # Use string reference "TranscriptionBlock" to avoid circular import if needed, 

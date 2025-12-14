@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Book, CheckSquare, Search, Calendar, Trash2, Settings, Edit3, Check, Plus, Sparkles, RotateCcw } from 'lucide-react';
+import { Book, CheckSquare, Search, Calendar, Trash2, Settings, Edit3, Check, Plus, Sparkles, RotateCcw, Palette } from 'lucide-react';
 import type { HistoryItem } from '../types';
 
 interface SidebarProps {
@@ -13,8 +13,23 @@ interface SidebarProps {
     onResetLayout: () => void;
     onRestoreSession: (id: string) => void;
     onEmptyTrash: () => void;
+    onColorChange: (id: string, color: string | null) => void;
+    selectedSessionId: string | null;
     width?: number;
 }
+
+// Pastel colors for sessions (9 options)
+const SESSION_COLORS = [
+    { name: 'なし', value: null, bg: 'bg-white', border: 'border-gray-100' },
+    { name: '黄色', value: 'yellow', bg: 'bg-yellow-50', border: 'border-yellow-200' },
+    { name: '青', value: 'blue', bg: 'bg-blue-50', border: 'border-blue-200' },
+    { name: '緑', value: 'green', bg: 'bg-green-50', border: 'border-green-200' },
+    { name: 'ピンク', value: 'pink', bg: 'bg-pink-50', border: 'border-pink-200' },
+    { name: '紫', value: 'purple', bg: 'bg-purple-50', border: 'border-purple-200' },
+    { name: 'オレンジ', value: 'orange', bg: 'bg-orange-50', border: 'border-orange-200' },
+    { name: '水色', value: 'cyan', bg: 'bg-cyan-50', border: 'border-cyan-200' },
+    { name: 'グレー', value: 'gray', bg: 'bg-gray-100', border: 'border-gray-300' },
+];
 
 export const Sidebar: React.FC<SidebarProps> = ({
     history,
@@ -27,6 +42,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onResetLayout,
     onRestoreSession,
     onEmptyTrash,
+    onColorChange,
+    selectedSessionId,
     width = 300
 }) => {
     const [searchQuery, setSearchQuery] = useState("");
@@ -39,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
     const [tempTitle, setTempTitle] = useState("");
     const [showTrash, setShowTrash] = useState(false);
+    const [colorPickerSessionId, setColorPickerSessionId] = useState<string | null>(null);
 
     const toggleHistorySelection = (id: string) => {
         const newSet = new Set(selectedHistoryIds);
@@ -179,54 +197,100 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                {displayedHistory.length === 0 ? <div className="p-8 text-center text-gray-400 text-sm">{showTrash ? "ゴミ箱は空です" : "履歴が見つかりません"}</div> : displayedHistory.map(item => (
-                    <div key={item.id} className={`p-3 border-b border-gray-100 transition-colors group relative ${isSelectionMode ? 'hover:bg-gray-50' : selectedHistoryIds.has(item.id) ? 'bg-blue-50' : 'hover:bg-blue-50 cursor-pointer'}`}>
-                        <div className="flex gap-2">
-                            {isSelectionMode && !showTrash && <div className="pt-1"><input type="checkbox" checked={selectedHistoryIds.has(item.id)} onChange={() => toggleHistorySelection(item.id)} className="w-4 h-4 text-blue-600 rounded cursor-pointer" /></div>}
-                            <div className="flex-1 min-w-0" onClick={() => !isSelectionMode && !editingTitleId && !showTrash && onSelectSession(item.id)}>
-                                <div className="text-xs text-gray-500 mb-0.5 flex justify-between">{item.date}</div>
-                                {editingTitleId === item.id ? (
-                                    <div className="flex gap-1 items-center mt-1">
-                                        <input
-                                            type="text"
-                                            value={tempTitle}
-                                            onChange={(e) => setTempTitle(e.target.value)}
-                                            className="w-full text-sm border border-blue-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            autoFocus
-                                            onBlur={saveTitle}
-                                            onKeyDown={(e) => e.key === 'Enter' && saveTitle()}
-                                        />
-                                        <button onClick={saveTitle} className="text-green-600 p-1 hover:bg-green-50 rounded"><Check size={14} /></button>
-                                        <button onClick={async (e) => {
-                                            e.stopPropagation();
-                                            try {
-                                                const newT = await onGenerateTitle(item.id);
-                                                setTempTitle(newT);
-                                            } catch (err) {
-                                                alert("AIタイトルの生成に失敗しました");
-                                            }
-                                        }} className="text-purple-600 p-1 hover:bg-purple-50 rounded" title="AIでタイトルを生成"><Sparkles size={14} /></button>
-                                    </div>
-                                ) : (
-                                    <div className="text-sm font-medium text-gray-800 line-clamp-2" title={item.summary}>
-                                        {item.summary}
-                                    </div>
-                                )}
-                            </div>
+                {displayedHistory.length === 0 ? <div className="p-8 text-center text-gray-400 text-sm">{showTrash ? "ゴミ箱は空です" : "履歴が見つかりません"}</div> : displayedHistory.map(item => {
+                    const isSelected = selectedSessionId === item.id;
+                    const getColorClasses = () => {
+                        if (item.color === 'yellow') return 'bg-yellow-50 border-yellow-200';
+                        if (item.color === 'blue') return 'bg-blue-50 border-blue-200';
+                        if (item.color === 'green') return 'bg-green-50 border-green-200';
+                        if (item.color === 'pink') return 'bg-pink-50 border-pink-200';
+                        if (item.color === 'purple') return 'bg-purple-50 border-purple-200';
+                        if (item.color === 'orange') return 'bg-orange-50 border-orange-200';
+                        if (item.color === 'cyan') return 'bg-cyan-50 border-cyan-200';
+                        if (item.color === 'gray') return 'bg-gray-100 border-gray-300';
+                        return 'bg-white border-gray-100';
+                    };
+                    return (
+                        <div key={item.id} className={`p-3 border-b transition-colors group relative
+                        ${getColorClasses()}
+                        ${isSelected ? 'ring-2 ring-blue-500 border-blue-400 font-bold' : ''}
+                        ${isSelectionMode ? 'hover:bg-gray-50' : 'hover:bg-blue-50 cursor-pointer'}`}>
+                            <div className="flex gap-2">
+                                {isSelectionMode && !showTrash && <div className="pt-1"><input type="checkbox" checked={selectedHistoryIds.has(item.id)} onChange={() => toggleHistorySelection(item.id)} className="w-4 h-4 text-blue-600 rounded cursor-pointer" /></div>}
+                                <div className="flex-1 min-w-0" onClick={() => !isSelectionMode && !editingTitleId && !showTrash && onSelectSession(item.id)}>
+                                    <div className="text-xs text-gray-500 mb-0.5 flex justify-between">{item.date}</div>
+                                    {editingTitleId === item.id ? (
+                                        <div className="flex gap-1 items-center mt-1">
+                                            <input
+                                                type="text"
+                                                value={tempTitle}
+                                                onChange={(e) => setTempTitle(e.target.value)}
+                                                className="w-full text-sm border border-blue-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                autoFocus
+                                                onBlur={saveTitle}
+                                                onKeyDown={(e) => e.key === 'Enter' && saveTitle()}
+                                            />
+                                            <button onClick={saveTitle} className="text-green-600 p-1 hover:bg-green-50 rounded"><Check size={14} /></button>
+                                            <button onClick={async (e) => {
+                                                e.stopPropagation();
+                                                try {
+                                                    const newT = await onGenerateTitle(item.id);
+                                                    setTempTitle(newT);
+                                                } catch (err) {
+                                                    alert("AIタイトルの生成に失敗しました");
+                                                }
+                                            }} className="text-purple-600 p-1 hover:bg-purple-50 rounded" title="AIでタイトルを生成"><Sparkles size={14} /></button>
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm font-medium text-gray-800 line-clamp-2" title={item.summary}>
+                                            {item.summary}
+                                        </div>
+                                    )}
+                                </div>
 
-                            {/* Hover Actions */}
-                            <div className="flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity pl-1">
-                                {showTrash ? (
-                                    <button onClick={(e) => { e.stopPropagation(); onRestoreSession(item.id); }} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200" title="元に戻す"><RotateCcw size={14} /></button>
-                                ) : (
-                                    !isSelectionMode && editingTitleId !== item.id && (
-                                        <button onClick={(e) => { e.stopPropagation(); startEditingTitle(item); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200"><Edit3 size={14} /></button>
-                                    )
-                                )}
+                                {/* Hover Actions */}
+                                <div className="flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity pl-1">
+                                    {showTrash ? (
+                                        <button onClick={(e) => { e.stopPropagation(); onRestoreSession(item.id); }} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200" title="元に戻す"><RotateCcw size={14} /></button>
+                                    ) : (
+                                        !isSelectionMode && editingTitleId !== item.id && (
+                                            <div className="flex flex-col gap-1">
+                                                <button onClick={(e) => { e.stopPropagation(); startEditingTitle(item); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200"><Edit3 size={14} /></button>
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setColorPickerSessionId(colorPickerSessionId === item.id ? null : item.id); }}
+                                                        className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200"
+                                                        title="色を変更"
+                                                    >
+                                                        <Palette size={14} />
+                                                    </button>
+                                                    {colorPickerSessionId === item.id && (
+                                                        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 min-w-[120px]">
+                                                            <div className="grid grid-cols-3 gap-1">
+                                                                {SESSION_COLORS.map((c) => (
+                                                                    <button
+                                                                        key={c.value || 'none'}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            onColorChange(item.id, c.value);
+                                                                            setColorPickerSessionId(null);
+                                                                        }}
+                                                                        className={`w-8 h-8 rounded border-2 ${c.bg} ${c.border} hover:scale-110 transition-transform ${item.color === c.value ? 'ring-2 ring-blue-400' : ''}`}
+                                                                        title={c.name}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
             <div className="p-2 border-t border-gray-200 flex gap-2">
                 <button onClick={onOpenSettings} className="flex-1 flex items-center justify-center gap-1 text-xs text-gray-600 hover:text-gray-900 p-1.5 rounded hover:bg-gray-100 transition-colors bg-white border border-gray-200 shadow-sm"><Settings size={14} /><span>設定</span></button>

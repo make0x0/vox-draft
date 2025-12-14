@@ -30,6 +30,7 @@ def list_sessions(skip: int = 0, limit: int = 100, db: DBSession = Depends(get_d
             summary=s.summary,
             created_at=s.created_at,
             is_deleted=s.is_deleted,
+            color=s.color,
             first_block_text=first_block.text if first_block else None
         ))
     return results
@@ -78,6 +79,8 @@ def update_session(session_id: str, session_in: session_schema.SessionUpdate, db
         db_session.title = session_in.title
     if session_in.summary is not None:
         db_session.summary = session_in.summary
+    if session_in.color is not None:
+        db_session.color = session_in.color
     
     db.commit()
     db.refresh(db_session)

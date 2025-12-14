@@ -28,7 +28,8 @@ export const useSessions = () => {
                     return `${y}-${m}-${day} ${h}:${min}`;
                 })(),
                 isoDate: item.created_at.split('T')[0],
-                isDeleted: item.is_deleted // Add this
+                isDeleted: item.is_deleted,
+                color: item.color
             }));
             setSessions(data);
         } catch (err) {
@@ -64,6 +65,15 @@ export const useSessions = () => {
             setSessions(prev => prev.filter(s => !s.isDeleted));
         } catch (err) {
             console.error('Failed to empty session trash:', err);
+        }
+    };
+
+    const updateSessionColor = async (id: string, color: string | null) => {
+        try {
+            await client.patch(endpoints.sessions.detail(id), { color: color });
+            setSessions(prev => prev.map(s => s.id === id ? { ...s, color: color || undefined } : s));
+        } catch (err) {
+            console.error('Failed to update session color:', err);
         }
     };
 
@@ -114,6 +124,7 @@ export const useSessions = () => {
         restoreSession,
         emptySessionTrash,
         updateSessionTitle,
+        updateSessionColor,
         createSession
     };
 };
