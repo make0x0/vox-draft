@@ -76,6 +76,8 @@ export default function App() {
   // UI State
   const [isPromptRecording] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // Mobile sidebar toggle - starts hidden on mobile
+  const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [tasks, setTasks] = useState<TaskStatus[]>([]);
   // System Config State
   const [systemConfig, setSystemConfig] = useState<any>({
@@ -659,224 +661,258 @@ export default function App() {
   }, []);
 
   return (
-    <div className="flex h-screen w-full bg-gray-100 text-gray-800 font-sans overflow-hidden relative">
+    <div className="flex flex-col h-screen w-full bg-gray-100 text-gray-800 font-sans overflow-hidden relative">
       <NotificationManager tasks={tasks} onDismiss={handleDismissTask} config={systemConfig.notifications} />
 
-      {/* --- Left Pane: Sidebar --- */}
-      {/* --- Left Pane: Sidebar --- */}
-      <Sidebar
-        history={sessions}
-        onSelectSession={handleDisplaySession}
-        onDeleteSessions={handleDeleteSessions}
-        onUpdateSessionTitle={handleUpdateSessionTitle}
-        onGenerateTitle={handleGenerateTitle}
-        onOpenSettings={() => setShowSettings(true)}
-        onNewSession={handleNewSession}
-        onResetLayout={handleResetLayout}
-        width={sidebarWidth}
-        onRestoreSession={restoreSession}
-        onEmptyTrash={emptySessionTrash}
-        onColorChange={updateSessionColor}
-        selectedSessionId={selectedSessionId}
-      />
+      {/* Mobile Sidebar Toggle Button */}
+      {isMobile && (
+        <button
+          onClick={() => setShowSidebar(!showSidebar)}
+          className="fixed top-2 left-2 z-50 bg-white shadow-lg rounded-lg p-2 border border-gray-200"
+          title={showSidebar ? "サイドバーを閉じる" : "セッション一覧"}
+        >
+          {showSidebar ? (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          )}
+        </button>
+      )}
 
-      {/* Resize Handle Left */}
-      <div
-        className="w-1 hover:w-1.5 bg-gray-200 hover:bg-blue-400 cursor-col-resize z-30 transition-colors flex-shrink-0"
-        onMouseDown={() => { isDraggingSidebar.current = true; }}
-      />
+      {/* Mobile Sidebar Overlay */}
+      {isMobile && showSidebar && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
 
-      {/* --- Main Area --- */}
-      <main className="flex-1 flex flex-col min-w-0">
-        <div className="flex-1 flex min-h-0">
+      {/* Main 3-pane layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* --- Left Pane: Sidebar --- */}
+        {showSidebar && (
+          <div className={`${isMobile ? 'fixed left-0 top-0 bottom-0 z-40 w-80 shadow-2xl' : ''}`}>
+            <Sidebar
+              history={sessions}
+              onSelectSession={(id) => {
+                handleDisplaySession(id);
+                if (isMobile) setShowSidebar(false); // Auto-close on mobile
+              }}
+              onDeleteSessions={handleDeleteSessions}
+              onUpdateSessionTitle={handleUpdateSessionTitle}
+              onGenerateTitle={handleGenerateTitle}
+              onOpenSettings={() => setShowSettings(true)}
+              onNewSession={handleNewSession}
+              onResetLayout={handleResetLayout}
+              width={isMobile ? 320 : sidebarWidth}
+              onRestoreSession={restoreSession}
+              onEmptyTrash={emptySessionTrash}
+              onColorChange={updateSessionColor}
+              selectedSessionId={selectedSessionId}
+            />
+          </div>
+        )}
 
-          {/* --- Center Pane: Transcription List & Recording --- */}
-          <div className="flex-1 flex flex-col min-w-0 bg-white relative">
-            <div className="flex-1 overflow-hidden flex flex-col">
-              {(selectedSessionId && !blocksLoading) ? (
-                <TranscriptionList
-                  blocks={blocks}
-                  setBlocks={handleSetBlocks}
-                  onAddTextBlock={handleAddTextBlock}
-                  onUploadFile={handleFileUpload}
-                  onDeleteBlock={handleDeleteBlock}
-                  onReTranscribe={handleReTranscribe}
-                  onUpdateBlock={handleBlockUpdate}
-                  onCheckBlock={handleBlockCheck}
-                  onRestoreBlock={restoreBlock}
-                  onEmptyTrash={() => {
-                    if (selectedSessionId) emptyTrash(selectedSessionId);
-                  }}
-                  onToggleAllBlocks={(check: boolean) => {
-                    if (selectedSessionId) toggleAllBlocks(selectedSessionId, check);
-                  }}
-                  onColorChange={(id: string, color: string | null) => {
-                    updateBlock(id, { color: color || undefined });
-                  }}
-                />
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 text-gray-400 gap-6 p-4">
-                  {blocksLoading ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <>
-                      <div className="text-center">
-                        <p className="text-lg font-medium text-gray-600 mb-2">セッションを開始</p>
-                        <p className="text-sm">左側のリストからセッションを選択するか、<br />新規作成・録音を開始してください。</p>
-                      </div>
+        {/* Resize Handle Left - hidden on mobile */}
+        {!isMobile && showSidebar && (
+          <div
+            className="w-1 hover:w-1.5 bg-gray-200 hover:bg-blue-400 cursor-col-resize z-30 transition-colors flex-shrink-0"
+            onMouseDown={() => { isDraggingSidebar.current = true; }}
+          />
+        )}
 
-                      <div className="flex flex-col gap-3 w-full max-w-xs">
-                        <button
-                          onClick={handleAddTextBlock}
-                          className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all font-medium"
-                        >
-                          <Square size={18} /> テキストノートを作成
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+        {/* --- Main Area --- */}
+        <main className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex min-h-0">
 
-            {/* --- Center Pane Footer: Recording Controls --- */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/50 backdrop-blur-sm flex items-center justify-center gap-4">
-              <button
-                onClick={handleMainRecordingToggle}
-                className={`
+            {/* --- Center Pane: Transcription List & Recording --- */}
+            <div className="flex-1 flex flex-col min-w-0 bg-white relative">
+              <div className="flex-1 overflow-hidden flex flex-col">
+                {(selectedSessionId && !blocksLoading) ? (
+                  <TranscriptionList
+                    blocks={blocks}
+                    setBlocks={handleSetBlocks}
+                    onAddTextBlock={handleAddTextBlock}
+                    onUploadFile={handleFileUpload}
+                    onDeleteBlock={handleDeleteBlock}
+                    onReTranscribe={handleReTranscribe}
+                    onUpdateBlock={handleBlockUpdate}
+                    onCheckBlock={handleBlockCheck}
+                    onRestoreBlock={restoreBlock}
+                    onEmptyTrash={() => {
+                      if (selectedSessionId) emptyTrash(selectedSessionId);
+                    }}
+                    onToggleAllBlocks={(check: boolean) => {
+                      if (selectedSessionId) toggleAllBlocks(selectedSessionId, check);
+                    }}
+                    onColorChange={(id: string, color: string | null) => {
+                      updateBlock(id, { color: color || undefined });
+                    }}
+                  />
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 text-gray-400 gap-6 p-4">
+                    {blocksLoading ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <>
+                        <div className="text-center">
+                          <p className="text-lg font-medium text-gray-600 mb-2">セッションを開始</p>
+                          <p className="text-sm">左側のリストからセッションを選択するか、<br />新規作成・録音を開始してください。</p>
+                        </div>
+
+                        <div className="flex flex-col gap-3 w-full max-w-xs">
+                          <button
+                            onClick={handleAddTextBlock}
+                            className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all font-medium"
+                          >
+                            <Square size={18} /> テキストノートを作成
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* --- Center Pane Footer: Recording Controls --- */}
+              <div className="p-4 border-t border-gray-100 bg-gray-50/50 backdrop-blur-sm flex items-center justify-center gap-4">
+                <button
+                  onClick={handleMainRecordingToggle}
+                  className={`
                     w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-105
                     ${isRecording
-                    ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-200'
-                    : 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white'
-                  }
+                      ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-200'
+                      : 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white'
+                    }
                     `}
-                title={isRecording ? "録音を停止" : "ブロックに音声を追加 / 新規録音"}
-              >
-                {isRecording ? <Square size={24} fill="currentColor" /> : <Mic size={28} />}
-              </button>
+                  title={isRecording ? "録音を停止" : "ブロックに音声を追加 / 新規録音"}
+                >
+                  {isRecording ? <Square size={24} fill="currentColor" /> : <Mic size={28} />}
+                </button>
 
-              {isRecording && (
-                <div className="flex flex-col">
-                  <span className="text-red-500 text-xs font-bold animate-pulse">● RECORDING</span>
-                  <span className="text-gray-800 text-xl font-mono font-medium">{new Date(recordingDuration * 1000).toISOString().substr(14, 5)}</span>
+                {isRecording && (
+                  <div className="flex flex-col">
+                    <span className="text-red-500 text-xs font-bold animate-pulse">● RECORDING</span>
+                    <span className="text-gray-800 text-xl font-mono font-medium">{new Date(recordingDuration * 1000).toISOString().substr(14, 5)}</span>
+                  </div>
+                )}
+
+                {!isRecording && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400 font-medium hidden sm:block">
+                      {selectedSessionId ? "このセッションに音声を追加" : "録音して新規セッションを作成"}
+                    </span>
+
+                    <div className="flex items-center">
+                      <input
+                        type="file"
+                        ref={footerFileInputRef}
+                        className="hidden"
+                        accept="audio/*,video/*,.m4a,.mp3,.wav"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            handleFileUpload(e.target.files[0]);
+                            e.target.value = ''; // Reset
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => footerFileInputRef.current?.click()}
+                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-2 py-1.5 rounded-md transition-all border border-transparent hover:border-blue-100"
+                        title="音声ファイルをアップロードして開始"
+                      >
+                        <Upload size={14} />
+                        <span>ファイル選択</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {recordingError && (
+                  <div className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded border border-red-100">{recordingError}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Resize Handle Right */}
+            <div
+              className="w-1 hover:w-1.5 bg-gray-200 hover:bg-blue-400 cursor-col-resize z-30 transition-colors flex-shrink-0"
+              onMouseDown={() => { isDraggingEditor.current = true; }}
+            />
+
+            {/* --- Right Pane: Editor --- */}
+            <Editor
+              content={editorContent}
+              setContent={setEditorContent}
+              width={editorWidth}
+              revisions={revisions}
+              currentRevisionIndex={currentRevisionIndex}
+              onLoadRevision={handleLoadRevision}
+              onSaveRevision={() => handleSaveRevision("Manual Save")}
+              onDeleteRevision={handleDeleteRevision}
+              isBusy={isGenerating}
+            />
+          </div>
+
+          {/* --- Footer Control (LLM Only) --- */}
+          <footer className="h-auto border-t border-gray-200 bg-white p-4 shadow-lg z-10 flex flex-col gap-3">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <select className="text-sm border border-gray-300 rounded px-2 py-1 bg-gray-50 hover:bg-gray-100 focus:outline-none text-gray-700" value={selectedFooterTemplateId} onChange={handleFooterTemplateSelect}>
+                    <option value="">テンプレートを選択...</option>
+                    {templates.map((t) => (<option key={t.id} value={t.id}>{t.title}</option>))}
+                  </select>
+                  <span className="text-xs text-gray-400">{blocks.filter(b => b.isChecked).length} ブロック選択中</span>
                 </div>
-              )}
-
-              {!isRecording && (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400 font-medium hidden sm:block">
-                    {selectedSessionId ? "このセッションに音声を追加" : "録音して新規セッションを作成"}
-                  </span>
-
-                  <div className="flex items-center">
-                    <input
-                      type="file"
-                      ref={footerFileInputRef}
-                      className="hidden"
-                      accept="audio/*,video/*,.m4a,.mp3,.wav"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileUpload(e.target.files[0]);
-                          e.target.value = ''; // Reset
+                <div className="flex gap-2 w-full">
+                  <div className="relative flex-1 flex">
+                    <textarea
+                      className="w-full border border-gray-300 rounded-l-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-h-[42px] max-h-[400px] resize-y"
+                      placeholder="AIへの指示・プロンプトを入力..."
+                      value={promptText}
+                      onChange={(e) => setPromptText(e.target.value)}
+                      style={{ height: promptHeight }}
+                      onMouseUp={(e) => {
+                        // Save height after resize
+                        const h = e.currentTarget.style.height;
+                        if (h && h !== promptHeight) {
+                          setPromptHeight(h);
                         }
                       }}
                     />
-                    <button
-                      onClick={() => footerFileInputRef.current?.click()}
-                      className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-2 py-1.5 rounded-md transition-all border border-transparent hover:border-blue-100"
-                      title="音声ファイルをアップロードして開始"
-                    >
-                      <Upload size={14} />
-                      <span>ファイル選択</span>
-                    </button>
+                    <button onClick={handlePromptRecordToggle} className={`px-3 border-y border-r border-gray-300 rounded-r-lg hover:bg-gray-50 flex items-center justify-center transition-colors ${isPromptRecording ? 'text-red-500 bg-red-50 border-red-200' : 'text-gray-500'}`} title="音声で指示を追加"><Mic size={18} className={isPromptRecording ? "animate-pulse" : ""} /></button>
                   </div>
+                  <button onClick={handleRunLLM} disabled={isGenerating} className={`bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-lg font-medium shadow-sm flex items-center gap-2 transition-colors h-auto ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />} 実行
+                  </button>
                 </div>
-              )}
-
-              {recordingError && (
-                <div className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded border border-red-100">{recordingError}</div>
-              )}
-            </div>
-          </div>
-
-          {/* Resize Handle Right */}
-          <div
-            className="w-1 hover:w-1.5 bg-gray-200 hover:bg-blue-400 cursor-col-resize z-30 transition-colors flex-shrink-0"
-            onMouseDown={() => { isDraggingEditor.current = true; }}
-          />
-
-          {/* --- Right Pane: Editor --- */}
-          <Editor
-            content={editorContent}
-            setContent={setEditorContent}
-            width={editorWidth}
-            revisions={revisions}
-            currentRevisionIndex={currentRevisionIndex}
-            onLoadRevision={handleLoadRevision}
-            onSaveRevision={() => handleSaveRevision("Manual Save")}
-            onDeleteRevision={handleDeleteRevision}
-            isBusy={isGenerating}
-          />
-        </div>
-
-        {/* --- Footer Control (LLM Only) --- */}
-        <footer className="h-auto border-t border-gray-200 bg-white p-4 shadow-lg z-10 flex flex-col gap-3">
-          <div className="flex items-center gap-4">
-            <div className="flex-1 flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <select className="text-sm border border-gray-300 rounded px-2 py-1 bg-gray-50 hover:bg-gray-100 focus:outline-none text-gray-700" value={selectedFooterTemplateId} onChange={handleFooterTemplateSelect}>
-                  <option value="">テンプレートを選択...</option>
-                  {templates.map((t) => (<option key={t.id} value={t.id}>{t.title}</option>))}
-                </select>
-                <span className="text-xs text-gray-400">{blocks.filter(b => b.isChecked).length} ブロック選択中</span>
-              </div>
-              <div className="flex gap-2 w-full">
-                <div className="relative flex-1 flex">
-                  <textarea
-                    className="w-full border border-gray-300 rounded-l-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-h-[42px] max-h-[400px] resize-y"
-                    placeholder="AIへの指示・プロンプトを入力..."
-                    value={promptText}
-                    onChange={(e) => setPromptText(e.target.value)}
-                    style={{ height: promptHeight }}
-                    onMouseUp={(e) => {
-                      // Save height after resize
-                      const h = e.currentTarget.style.height;
-                      if (h && h !== promptHeight) {
-                        setPromptHeight(h);
-                      }
-                    }}
-                  />
-                  <button onClick={handlePromptRecordToggle} className={`px-3 border-y border-r border-gray-300 rounded-r-lg hover:bg-gray-50 flex items-center justify-center transition-colors ${isPromptRecording ? 'text-red-500 bg-red-50 border-red-200' : 'text-gray-500'}`} title="音声で指示を追加"><Mic size={18} className={isPromptRecording ? "animate-pulse" : ""} /></button>
-                </div>
-                <button onClick={handleRunLLM} disabled={isGenerating} className={`bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-lg font-medium shadow-sm flex items-center gap-2 transition-colors h-auto ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />} 実行
-                </button>
               </div>
             </div>
-          </div>
-        </footer>
-      </main>
+          </footer>
+        </main>
 
-      {/* --- Settings Modal --- */}
-      {showSettings && (
-        <SettingsModal
-          onClose={() => setShowSettings(false)}
-          templates={templates}
-          vocabulary={vocabulary}
-          // Pass Persistence Handlers
-          onAddTemplate={settingsData.addTemplate}
-          onUpdateTemplate={settingsData.updateTemplate}
-          onDeleteTemplate={settingsData.deleteTemplate}
-          onAddVocab={settingsData.addVocabularyItem}
-          onUpdateVocab={settingsData.updateVocabularyItem}
-          onDeleteVocab={settingsData.deleteVocabularyItem}
+        {/* --- Settings Modal --- */}
+        {showSettings && (
+          <SettingsModal
+            onClose={() => setShowSettings(false)}
+            templates={templates}
+            vocabulary={vocabulary}
+            // Pass Persistence Handlers
+            onAddTemplate={settingsData.addTemplate}
+            onUpdateTemplate={settingsData.updateTemplate}
+            onDeleteTemplate={settingsData.deleteTemplate}
+            onAddVocab={settingsData.addVocabularyItem}
+            onUpdateVocab={settingsData.updateVocabularyItem}
+            onDeleteVocab={settingsData.deleteVocabularyItem}
 
-          apiConfig={{ stt: systemConfig.stt, llm: systemConfig.llm }}
-          generalSettings={generalSettings}
-          setGeneralSettings={setGeneralSettings}
-          onDataUpdated={fetchSessions}
-        />
-      )}
+            apiConfig={{ stt: systemConfig.stt, llm: systemConfig.llm }}
+            generalSettings={generalSettings}
+            setGeneralSettings={setGeneralSettings}
+            onDataUpdated={fetchSessions}
+          />
+        )}
+      </div>
     </div>
   );
 }
