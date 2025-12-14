@@ -608,6 +608,8 @@ export default function App() {
 
   const handleNewSession = () => {
     setSelectedSessionId(null);
+    // Clear last_session_id to prevent auto-restoration of the previous session
+    settingsData.updateGeneralSettings({ last_session_id: null });
     setRevisions([]);
     setCurrentRevisionIndex(-1);
     setEditorContent("# New Session...");

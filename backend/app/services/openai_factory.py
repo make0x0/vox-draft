@@ -58,7 +58,7 @@ def get_openai_client(service_type: str = "llm"):
                 timeout=timeout,
                 max_retries=max_retries
             )
-        else:
+        elif azure_api_key:
              return AzureOpenAI(
                 api_key=azure_api_key,
                 api_version=api_version,
@@ -66,6 +66,8 @@ def get_openai_client(service_type: str = "llm"):
                 timeout=timeout,
                 max_retries=max_retries
             )
+        else:
+             raise ValueError("Azure OpenAI selected but API Key or AD Token is missing. Please check your Settings.")
     else:
         # Standard OpenAI
         return OpenAI(
