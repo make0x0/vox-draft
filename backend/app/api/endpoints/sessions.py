@@ -166,6 +166,11 @@ async def create_block(session_id: str, block_in: block_schema.TranscriptionBloc
 
     tz = ZoneInfo(settings.TIMEZONE)
 
+    # Determine next order_index
+    from sqlalchemy import func
+    max_order = db.query(func.max(BlockModel.order_index)).filter(BlockModel.session_id == session_id).scalar()
+    next_order = (max_order if max_order is not None else -1) + 1
+
     db_block = BlockModel(
         session_id=session_id,
         type=block_in.type,
@@ -173,7 +178,8 @@ async def create_block(session_id: str, block_in: block_schema.TranscriptionBloc
         file_path=block_in.file_path,
         is_checked=block_in.is_checked,
         duration=block_in.duration,
-        timestamp=datetime.now(tz).strftime("%H:%M:%S")
+        timestamp=datetime.now(tz).strftime("%H:%M:%S"),
+        order_index=next_order
     )
     db.add(db_block)
     db.commit()
