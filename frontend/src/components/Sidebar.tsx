@@ -11,6 +11,8 @@ interface SidebarProps {
     onOpenSettings: () => void;
     onNewSession: () => void;
     onResetLayout: () => void;
+    onRestoreSession: (id: string) => void;
+    onEmptyTrash: () => void;
     width?: number;
 }
 
@@ -23,6 +25,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onOpenSettings,
     onNewSession,
     onResetLayout,
+    onRestoreSession,
+    onEmptyTrash,
     width = 300
 }) => {
     const [searchQuery, setSearchQuery] = useState("");
@@ -34,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
     const [tempTitle, setTempTitle] = useState("");
+    const [showTrash, setShowTrash] = useState(false);
 
     const toggleHistorySelection = (id: string) => {
         const newSet = new Set(selectedHistoryIds);
@@ -75,6 +80,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
 
     const filteredHistory = history.filter(h => {
+        // Filter by deleted status
+        if (showTrash) {
+            if (!h.isDeleted) return false;
+        } else {
+            if (h.isDeleted) return false;
+        }
+
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             if (!h.summary.toLowerCase().includes(q) && !h.date.includes(q)) return false;
@@ -85,6 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
 
     const displayedHistory = (!searchQuery && !searchDateFrom && !searchDateTo) ? filteredHistory.slice(0, 50) : filteredHistory;
+    const trashCount = history.filter(h => h.isDeleted).length;
 
     return (
         <aside
@@ -93,16 +106,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
             <div className="p-3 border-b border-gray-200 bg-gray-50 flex flex-col gap-2">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-sm font-bold text-gray-600 flex items-center gap-2"><Book size={16} /> 履歴</h2>
-                    {/* Toggle Moved from here */}
+                    <h2 className="text-sm font-bold text-gray-600 flex items-center gap-2">
+                        {showTrash ? <Trash2 size={16} /> : <Book size={16} />}
+                        {showTrash ? "ゴミ箱" : "履歴"}
+                    </h2>
+
+                    <button
+                        onClick={() => setShowTrash(!showTrash)}
+                        className={`text-xs border px-2 py-1 rounded flex items-center gap-1 shadow-sm transition-colors ${showTrash ? 'bg-gray-200 border-gray-300 text-gray-700' : 'bg-white border-gray-300 text-gray-500 hover:text-gray-700'}`}
+                        title={showTrash ? "リストに戻る" : "ゴミ箱を表示"}
+                    >
+                        {showTrash ? "戻る" : <><Trash2 size={12} /> ({trashCount})</>}
+                    </button>
                 </div>
 
-                <button
-                    onClick={onNewSession}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-md shadow-sm flex items-center justify-center gap-2 transition-colors"
-                >
-                    <Plus size={16} /> 新しいセッション
-                </button>
+                {!showTrash ? (
+                    <button
+                        onClick={onNewSession}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-md shadow-sm flex items-center justify-center gap-2 transition-colors"
+                    >
+                        <Plus size={16} /> 新しいセッション
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => {
+                            if (confirm("ゴミ箱を空にしますか？この操作は取り消せません。")) {
+                                onEmptyTrash();
+                            }
+                        }}
+                        disabled={trashCount === 0}
+                        className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm font-medium py-2 px-4 rounded-md shadow-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    >
+                        <Trash2 size={16} /> ゴミ箱を空にする
+                    </button>
+                )}
+
                 <div className="relative">
                     <Search size={14} className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input type="text" className="w-full text-sm border border-gray-300 rounded-md pl-8 pr-8 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-none" placeholder="タイトル・日付で検索" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
@@ -116,18 +154,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
 
                 {/* Selection Toggle & Tools Row */}
-                <div className="flex justify-between items-center mt-1">
-                    <button onClick={() => setIsSelectionMode(!isSelectionMode)} className={`p-1.5 rounded text-xs flex items-center gap-1 border ${isSelectionMode ? 'bg-blue-100 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
-                        <CheckSquare size={14} /> {isSelectionMode ? '選択モード終了' : '選択モード'}
-                    </button>
-                    {isSelectionMode && (
-                        <button onClick={handleDeleteAllHistory} className="text-xs text-red-600 hover:text-red-800 hover:underline flex items-center gap-1">
-                            <Trash2 size={12} /> 全履歴削除
+                {!showTrash && (
+                    <div className="flex justify-between items-center mt-1">
+                        <button onClick={() => setIsSelectionMode(!isSelectionMode)} className={`p-1.5 rounded text-xs flex items-center gap-1 border ${isSelectionMode ? 'bg-blue-100 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
+                            <CheckSquare size={14} /> {isSelectionMode ? '選択モード終了' : '選択モード'}
                         </button>
-                    )}
-                </div>
+                        {isSelectionMode && (
+                            <button onClick={handleDeleteAllHistory} className="text-xs text-red-600 hover:text-red-800 hover:underline flex items-center gap-1">
+                                <Trash2 size={12} /> 全履歴削除
+                            </button>
+                        )}
+                    </div>
+                )}
 
-                {isSelectionMode && (
+                {isSelectionMode && !showTrash && (
                     <div className="bg-blue-50 border border-blue-100 rounded p-2 flex justify-between items-center gap-2">
                         <div className="flex gap-2 items-center">
                             <span className="text-xs text-blue-800 font-bold">{selectedHistoryIds.size}件</span>
@@ -139,11 +179,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                {displayedHistory.length === 0 ? <div className="p-8 text-center text-gray-400 text-sm">履歴が見つかりません</div> : displayedHistory.map(item => (
+                {displayedHistory.length === 0 ? <div className="p-8 text-center text-gray-400 text-sm">{showTrash ? "ゴミ箱は空です" : "履歴が見つかりません"}</div> : displayedHistory.map(item => (
                     <div key={item.id} className={`p-3 border-b border-gray-100 transition-colors group relative ${isSelectionMode ? 'hover:bg-gray-50' : selectedHistoryIds.has(item.id) ? 'bg-blue-50' : 'hover:bg-blue-50 cursor-pointer'}`}>
                         <div className="flex gap-2">
-                            {isSelectionMode && <div className="pt-1"><input type="checkbox" checked={selectedHistoryIds.has(item.id)} onChange={() => toggleHistorySelection(item.id)} className="w-4 h-4 text-blue-600 rounded cursor-pointer" /></div>}
-                            <div className="flex-1 min-w-0" onClick={() => !isSelectionMode && !editingTitleId && onSelectSession(item.id)}>
+                            {isSelectionMode && !showTrash && <div className="pt-1"><input type="checkbox" checked={selectedHistoryIds.has(item.id)} onChange={() => toggleHistorySelection(item.id)} className="w-4 h-4 text-blue-600 rounded cursor-pointer" /></div>}
+                            <div className="flex-1 min-w-0" onClick={() => !isSelectionMode && !editingTitleId && !showTrash && onSelectSession(item.id)}>
                                 <div className="text-xs text-gray-500 mb-0.5 flex justify-between">{item.date}</div>
                                 {editingTitleId === item.id ? (
                                     <div className="flex gap-1 items-center mt-1">
@@ -173,11 +213,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     </div>
                                 )}
                             </div>
-                            {!isSelectionMode && editingTitleId !== item.id && (
-                                <div className="flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity pl-1">
-                                    <button onClick={(e) => { e.stopPropagation(); startEditingTitle(item); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200"><Edit3 size={14} /></button>
-                                </div>
-                            )}
+
+                            {/* Hover Actions */}
+                            <div className="flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity pl-1">
+                                {showTrash ? (
+                                    <button onClick={(e) => { e.stopPropagation(); onRestoreSession(item.id); }} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200" title="元に戻す"><RotateCcw size={14} /></button>
+                                ) : (
+                                    !isSelectionMode && editingTitleId !== item.id && (
+                                        <button onClick={(e) => { e.stopPropagation(); startEditingTitle(item); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200"><Edit3 size={14} /></button>
+                                    )
+                                )}
+                            </div>
                         </div>
                     </div>
                 ))}

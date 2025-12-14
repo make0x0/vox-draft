@@ -18,6 +18,7 @@ class Session(SessionBase):
     id: str
     created_at: datetime
     updated_at: datetime
+    is_deleted: bool = False
     blocks: List[TranscriptionBlock] = []
 
     class Config:
@@ -28,6 +29,7 @@ class SessionList(BaseModel):
     title: Optional[str]
     summary: Optional[str]
     created_at: datetime
+    is_deleted: bool = False
     first_block_text: Optional[str] = None # For listing preview
 
     class Config:

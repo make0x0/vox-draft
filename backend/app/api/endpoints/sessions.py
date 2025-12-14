@@ -29,6 +29,7 @@ def list_sessions(skip: int = 0, limit: int = 100, db: DBSession = Depends(get_d
             title=s.title,
             summary=s.summary,
             created_at=s.created_at,
+            is_deleted=s.is_deleted,
             first_block_text=first_block.text if first_block else None
         ))
     return results
@@ -88,30 +89,54 @@ def delete_session(session_id: str, db: DBSession = Depends(get_db)):
     if not db_session:
          raise HTTPException(status_code=404, detail="Session not found")
     
-    # Physical File Deletion
-    blocks = db.query(BlockModel).filter(BlockModel.session_id == session_id).all()
+    db_session.is_deleted = True
+    db.commit()
+    return {"ok": True}
+
+@router.post("/{session_id}/restore", response_model=session_schema.Session)
+def restore_session(session_id: str, db: DBSession = Depends(get_db)):
+    db_session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+    if not db_session:
+         raise HTTPException(status_code=404, detail="Session not found")
+    
+    db_session.is_deleted = False
+    db.commit()
+    db.refresh(db_session)
+    return db_session
+
+@router.delete("/trash/empty")
+def empty_session_trash(db: DBSession = Depends(get_db)):
+    """
+    Permanently delete all soft-deleted sessions and their files.
+    """
+    # Find all soft-deleted sessions
+    deleted_sessions = db.query(SessionModel).filter(SessionModel.is_deleted == True).all()
+    
+    count = 0
     import os
     from pathlib import Path
 
-    for block in blocks:
-        if block.file_path:
-            try:
-                # Resolve path relative to backend root or absolute
-                # Assuming file_path is stored as absolute or relative to known root.
-                # If stored as relative "data/audio/...", we need to know CWD.
-                # Backend CWD is usually app root.
-                file_path = Path(block.file_path)
-                if file_path.exists() and file_path.is_file():
-                    os.remove(file_path)
-                    print(f"Deleted file: {file_path}")
-            except Exception as e:
-                print(f"Error deleting file {block.file_path}: {e}")
+    for session in deleted_sessions:
+        # 1. Delete associated files (blocks)
+        blocks = db.query(BlockModel).filter(BlockModel.session_id == session.id).all()
+        for block in blocks:
+             if block.file_path:
+                try:
+                    file_path = Path(block.file_path)
+                    if file_path.exists() and file_path.is_file():
+                        os.remove(file_path)
+                        print(f"Deleted file: {file_path}")
+                except Exception as e:
+                    print(f"Error deleting file {block.file_path}: {e}")
+        
+        # 2. Delete session (cascade should handle blocks if configured, but let's be safe/explicit if needed, 
+        # but model says cascade='all, delete-orphan' so ensuring session deletion is enough)
+        # However, we must ensure blocks are deleted from DB. Cascade works if using ORM delete.
+        db.delete(session)
+        count += 1
 
-    # Cascade delete DB records
-    db.query(BlockModel).filter(BlockModel.session_id == session_id).delete()
-    db.delete(db_session)
     db.commit()
-    return {"ok": True}
+    return {"ok": True, "deleted_count": count}
 
 # --- Block Operations ---
 

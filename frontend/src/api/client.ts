@@ -26,6 +26,10 @@ export const endpoints = {
     sessions: {
         list: '/api/sessions',
         detail: (id: string) => `/api/sessions/${id}`,
+        update: (id: string) => `/api/sessions/${id}`,
+        delete: (id: string) => `/api/sessions/${id}`,
+        restore: (id: string) => `/api/sessions/${id}/restore`,
+        emptyTrash: '/api/sessions/trash/empty',
         blocks: {
             list: (sessionId: string) => `/api/sessions/${sessionId}/blocks`,
             create: (sessionId: string) => `/api/sessions/${sessionId}/blocks`,

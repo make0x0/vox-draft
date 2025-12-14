@@ -23,7 +23,7 @@ import type {
 
 export default function App() {
   // --- State ---
-  const { sessions, fetchSessions, deleteSessions, updateSessionTitle, createSession } = useSessions();
+  const { sessions, fetchSessions, deleteSessions, updateSessionTitle, createSession, restoreSession, emptySessionTrash } = useSessions();
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   const { blocks, isLoading: blocksLoading, addBlock, updateBlock, deleteBlock, fetchBlocks, setBlocks, restoreBlock, emptyTrash } = useBlocks();
@@ -645,6 +645,8 @@ export default function App() {
         onNewSession={handleNewSession}
         onResetLayout={handleResetLayout}
         width={sidebarWidth}
+        onRestoreSession={restoreSession}
+        onEmptyTrash={emptySessionTrash}
       />
 
       {/* Resize Handle Left */}

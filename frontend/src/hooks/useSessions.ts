@@ -27,7 +27,8 @@ export const useSessions = () => {
                     const min = String(d.getMinutes()).padStart(2, '0');
                     return `${y}-${m}-${day} ${h}:${min}`;
                 })(),
-                isoDate: item.created_at.split('T')[0]
+                isoDate: item.created_at.split('T')[0],
+                isDeleted: item.is_deleted // Add this
             }));
             setSessions(data);
         } catch (err) {
@@ -40,11 +41,29 @@ export const useSessions = () => {
 
     const deleteSessions = async (ids: string[]) => {
         try {
-            await Promise.all(ids.map(id => client.delete(endpoints.sessions.detail(id))));
-            setSessions(prev => prev.filter(s => !ids.includes(s.id)));
+            await Promise.all(ids.map(id => client.delete(endpoints.sessions.delete(id))));
+            // Soft delete: Mark as deleted locally
+            setSessions(prev => prev.map(s => ids.includes(s.id) ? { ...s, isDeleted: true } : s));
         } catch (err) {
             console.error(err);
-            // Handle error (maybe toast)
+        }
+    };
+
+    const restoreSession = async (id: string) => {
+        try {
+            await client.post(endpoints.sessions.restore(id), {});
+            setSessions(prev => prev.map(s => s.id === id ? { ...s, isDeleted: false } : s));
+        } catch (err) {
+            console.error('Failed to restore session:', err);
+        }
+    };
+
+    const emptySessionTrash = async () => {
+        try {
+            await client.delete(endpoints.sessions.emptyTrash);
+            setSessions(prev => prev.filter(s => !s.isDeleted));
+        } catch (err) {
+            console.error('Failed to empty session trash:', err);
         }
     };
 
@@ -92,6 +111,8 @@ export const useSessions = () => {
         error,
         fetchSessions,
         deleteSessions,
+        restoreSession,
+        emptySessionTrash,
         updateSessionTitle,
         createSession
     };

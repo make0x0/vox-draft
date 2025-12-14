@@ -15,6 +15,7 @@ export interface HistoryItem {
     date: string;
     isoDate: string;
     summary: string;
+    isDeleted?: boolean; // Added for frontend logic
 }
 
 export interface PromptTemplate {
