@@ -7,6 +7,7 @@ export interface TranscriptionBlock {
     duration?: string;
     fileName?: string;
     filePath?: string; // Added for backend integration
+    isDeleted?: boolean;
 }
 
 export interface HistoryItem {

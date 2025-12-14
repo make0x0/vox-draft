@@ -26,7 +26,7 @@ export default function App() {
   const { sessions, fetchSessions, deleteSessions, updateSessionTitle, createSession } = useSessions();
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
-  const { blocks, isLoading: blocksLoading, addBlock, updateBlock, deleteBlock, fetchBlocks, setBlocks } = useBlocks();
+  const { blocks, isLoading: blocksLoading, addBlock, updateBlock, deleteBlock, fetchBlocks, setBlocks, restoreBlock, emptyTrash } = useBlocks();
 
   // Settings Data Hook (Persistence)
   const settingsData = useSettingsData();
@@ -88,7 +88,7 @@ export default function App() {
   // Monitor blocks to update tasks
   useEffect(() => {
     // 1. Detect new processing blocks
-    const processingBlocks = blocks.filter(b => b.text === '(Transcription queued...)' || b.text === '(Processing...)');
+    const processingBlocks = blocks.filter(b => !b.isDeleted && (b.text === '(Transcription queued...)' || b.text === '(Processing...)'));
 
     setTasks(prevTasks => {
       let newTasks = [...prevTasks];
@@ -330,13 +330,13 @@ export default function App() {
     const extraPrompt = promptText;
 
     // Build context from blocks
-    // If blocks selected, use them. Else use all? For now use checked blocks or all if none checked.
-    const checkedBlocks = blocks.filter(b => b.isChecked);
+    // Exclude deleted blocks
+    const checkedBlocks = blocks.filter(b => b.isChecked && !b.isDeleted);
 
     // User requested checked blocks concatenated in order. 
     // `blocks` is already sorted by backend response (usually creation time or index).
     // If user wants specific drag-order, `blocks` state should reflect that.
-    const targetBlocks = (checkedBlocks.length > 0 ? checkedBlocks : blocks)
+    const targetBlocks = (checkedBlocks.length > 0 ? checkedBlocks : blocks.filter(b => !b.isDeleted))
       .filter(b => !b.text.startsWith("[Error]") && !b.text.includes("Error:") && !b.text.includes("Failed:"));
 
     if (targetBlocks.length === 0 && !editorContent.trim() && !extraPrompt.trim()) {
@@ -670,6 +670,10 @@ export default function App() {
                   onReTranscribe={handleReTranscribe}
                   onUpdateBlock={handleBlockUpdate}
                   onCheckBlock={handleBlockCheck}
+                  onRestoreBlock={restoreBlock}
+                  onEmptyTrash={() => {
+                    if (selectedSessionId) emptyTrash(selectedSessionId);
+                  }}
                 />
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 text-gray-400 gap-6 p-4">

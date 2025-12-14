@@ -32,7 +32,8 @@ export const useBlocks = () => {
                 timestamp: b.timestamp || new Date(b.created_at + (b.created_at.endsWith('Z') ? '' : 'Z')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 isChecked: b.is_checked,
                 duration: b.duration,
-                fileName: b.file_name
+                fileName: b.file_name,
+                isDeleted: b.is_deleted
             }));
             setBlocks(fetchedBlocks);
         } catch (err) {
@@ -91,9 +92,29 @@ export const useBlocks = () => {
     const deleteBlock = async (blockId: string) => {
         try {
             await client.delete(endpoints.sessions.blocks.delete(blockId));
-            setBlocks(prev => prev.filter(b => b.id !== blockId));
+            // Soft delete: keep in list but marked
+            setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, isDeleted: true } : b));
         } catch (error) {
             console.error('Failed to delete block:', error);
+        }
+    };
+
+    const restoreBlock = async (blockId: string) => {
+        try {
+            await client.post(endpoints.sessions.blocks.restore(blockId), {});
+            setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, isDeleted: false } : b));
+        } catch (error) {
+            console.error('Failed to restore block:', error);
+        }
+    };
+
+    const emptyTrash = async (sessionId: string) => {
+        try {
+            await client.delete(endpoints.sessions.trash.empty(sessionId));
+            // Remove deleted items from local state
+            setBlocks(prev => prev.filter(b => !b.isDeleted));
+        } catch (error) {
+            console.error('Failed to empty trash:', error);
         }
     };
 
@@ -113,6 +134,8 @@ export const useBlocks = () => {
         addAudioBlock,
         updateBlock,
         deleteBlock,
+        restoreBlock,
+        emptyTrash,
         reTranscribeBlock
     };
 };

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Mic, Upload, Type, GripVertical, Maximize2, Play, RefreshCw, Trash2, Save, Copy } from 'lucide-react';
+import { Mic, Upload, Type, GripVertical, Maximize2, Play, RefreshCw, Trash2, Save, Copy, RotateCcw } from 'lucide-react';
 import type { TranscriptionBlock } from '../types';
 
 interface TranscriptionListProps {
@@ -11,6 +11,8 @@ interface TranscriptionListProps {
     onReTranscribe: (id: string) => void;
     onUpdateBlock: (id: string, text: string) => void;
     onCheckBlock: (id: string, isChecked: boolean) => void;
+    onRestoreBlock: (id: string) => void;
+    onEmptyTrash: () => void;
 }
 
 export const TranscriptionList: React.FC<TranscriptionListProps> = ({
@@ -21,10 +23,13 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
     onDeleteBlock,
     onReTranscribe,
     onUpdateBlock,
-    onCheckBlock
+    onCheckBlock,
+    onRestoreBlock,
+    onEmptyTrash
 }) => {
     const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
     const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
+    const [showTrash, setShowTrash] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const toggleBlockCheck = (id: string, currentChecked: boolean) => {
@@ -64,29 +69,66 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
 
     const expandedBlock = blocks.find(b => b.id === expandedBlockId);
 
+    // Filter blocks based on trash mode using optional isDeleted
+    // If showTrash is true, show blocks where isDeleted === true
+    // If showTrash is false, show blocks where isDeleted is falsy (false or undefined)
+    const displayBlocks = blocks.filter(b => showTrash ? (b.isDeleted === true) : (!b.isDeleted));
+
+    const trashCount = blocks.filter(b => b.isDeleted).length;
+
     return (
         <section className="flex-1 flex flex-col border-r border-gray-200 bg-white min-w-[300px] h-full overflow-hidden">
             <div className="p-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                 <h2 className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                    <Mic size={16} /> ブロックリスト
+                    <Mic size={16} /> {showTrash ? "ゴミ箱" : "ブロックリスト"}
                 </h2>
                 <div className="flex gap-2 items-center">
-                    <input type="file" ref={fileInputRef} className="hidden" accept="audio/*,video/*,.m4a,.mp3,.wav" onChange={handleFileUpload} />
-                    <button onClick={() => fileInputRef.current?.click()} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-blue-50 text-blue-600 flex items-center gap-1 shadow-sm" title="音声ファイルをアップロード">
-                        <Upload size={12} /> 音声ファイル
+                    {!showTrash ? (
+                        <>
+                            <input type="file" ref={fileInputRef} className="hidden" accept="audio/*,video/*,.m4a,.mp3,.wav" onChange={handleFileUpload} />
+                            <button onClick={() => fileInputRef.current?.click()} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-blue-50 text-blue-600 flex items-center gap-1 shadow-sm" title="音声ファイルをアップロード">
+                                <Upload size={12} /> 音声
+                            </button>
+                            <button onClick={onAddTextBlock} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-blue-50 text-blue-600 flex items-center gap-1 shadow-sm" title="テキストブロックを追加">
+                                <Type size={12} /> テキスト
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            onClick={() => {
+                                if (confirm("ゴミ箱を空にしますか？この操作は取り消せません。")) {
+                                    onEmptyTrash();
+                                }
+                            }}
+                            className="text-xs bg-red-50 border border-red-200 px-2 py-1 rounded hover:bg-red-100 text-red-600 flex items-center gap-1 shadow-sm font-bold"
+                            disabled={trashCount === 0}
+                        >
+                            <Trash2 size={12} /> ゴミ箱を空にする
+                        </button>
+                    )}
+
+                    <button
+                        onClick={() => setShowTrash(!showTrash)}
+                        className={`text-xs border px-2 py-1 rounded flex items-center gap-1 shadow-sm transition-colors ${showTrash ? 'bg-gray-200 border-gray-300 text-gray-700' : 'bg-white border-gray-300 text-gray-500 hover:text-gray-700'}`}
+                        title={showTrash ? "リストに戻る" : "ゴミ箱を表示"}
+                    >
+                        {showTrash ? "戻る" : <><Trash2 size={12} /> ({trashCount})</>}
                     </button>
-                    <button onClick={onAddTextBlock} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-blue-50 text-blue-600 flex items-center gap-1 shadow-sm" title="テキストブロックを追加">
-                        <Type size={12} /> テキスト追加
-                    </button>
-                    <span className="text-xs text-gray-400">Auto-saved</span>
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/50">
-                {blocks.map((block, index) => {
+                {displayBlocks.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-10 text-gray-400 text-sm">
+                        {showTrash ? "ゴミ箱は空です" : "ブロックがありません"}
+                    </div>
+                )}
+                {displayBlocks.map((block, index) => {
                     // Detect status
-                    const isProcessing = block.text.startsWith('(') && block.text.endsWith(')');
+                    const isProcessing = (!block.isDeleted) && block.text.startsWith('(') && block.text.endsWith(')');
                     const isError = block.text.startsWith('[Error]') || block.text.includes('Error:') || block.text.includes('Failed:');
+
+                    const isReadOnly = isProcessing || showTrash;
 
                     return (
                         <div
@@ -117,29 +159,28 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                                     <div className="flex gap-1">
                                         <button onClick={() => setExpandedBlockId(block.id)} className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="拡大して編集"><Maximize2 size={14} /></button>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {block.type === 'audio' && (
+                                            {showTrash ? (
+                                                <button onClick={() => onRestoreBlock(block.id)} className="p-1 text-gray-400 hover:text-green-600 rounded hover:bg-green-50" title="元に戻す"><RotateCcw size={14} /></button>
+                                            ) : (
                                                 <>
-                                                    <button className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="再生"><Play size={14} /></button>
-                                                    <button onClick={() => onReTranscribe(block.id)} className="p-1 text-gray-400 hover:text-green-600 rounded hover:bg-green-50" title="再認識"><RefreshCw size={14} /></button>
+                                                    {block.type === 'audio' && (
+                                                        <>
+                                                            <button className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="再生"><Play size={14} /></button>
+                                                            <button onClick={() => onReTranscribe(block.id)} className="p-1 text-gray-400 hover:text-green-600 rounded hover:bg-green-50" title="再認識"><RefreshCw size={14} /></button>
+                                                        </>
+                                                    )}
+                                                    <button
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(block.text);
+                                                        }}
+                                                        className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50"
+                                                        title="コピー"
+                                                    >
+                                                        <Copy size={14} />
+                                                    </button>
+                                                    <button onClick={() => onDeleteBlock(block.id)} className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-red-50" title="削除"><Trash2 size={14} /></button>
                                                 </>
                                             )}
-                                            <button
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(block.text);
-                                                    // Optional: Toast or feedback? 
-                                                    // For now simple alert or just assume works. 
-                                                    // Ideally we change icon state briefly but that requires local state per block or a global toast.
-                                                    // Let's use a simple alert for MVP or just rely on user knowing it worked?
-                                                    // User asked for "Copy button", distinct from "Copy Feedback".
-                                                    // Let's try to add a simple visual feedback if possible, but localized state is complex here.
-                                                    // Using a standard "Copy" icon.
-                                                }}
-                                                className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50"
-                                                title="コピー"
-                                            >
-                                                <Copy size={14} />
-                                            </button>
-                                            <button onClick={() => onDeleteBlock(block.id)} className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-red-50" title="削除"><Trash2 size={14} /></button>
                                         </div>
                                     </div>
                                 </div>
@@ -166,8 +207,8 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                                     value={block.text}
                                     onChange={(e) => updateLocalBlockText(block.id, e.target.value)}
                                     onBlur={(e) => persistBlockText(block.id, e.target.value)}
-                                    disabled={isProcessing}
-                                    readOnly={isProcessing}
+                                    disabled={isReadOnly}
+                                    readOnly={isReadOnly}
                                 />
                             </div>
                         </div>

@@ -15,6 +15,7 @@ class TranscriptionBlock(Base):
     timestamp = Column(String, nullable=True) # Display timestamp
     duration = Column(String, nullable=True)
     is_checked = Column(Boolean, default=True)
+    is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Establish relationship if needed, for cascading deletes etc.

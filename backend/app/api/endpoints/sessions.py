@@ -155,22 +155,66 @@ def update_block(block_id: str, block_in: block_schema.TranscriptionBlockUpdate,
 
 @router.delete("/blocks/{block_id}")
 def delete_block(block_id: str, db: DBSession = Depends(get_db)):
+    """
+    Soft delete a block (move to trash).
+    """
     db_block = db.query(BlockModel).filter(BlockModel.id == block_id).first()
     if not db_block:
         raise HTTPException(status_code=404, detail="Block not found")
     
-    # Physical File Deletion
-    if db_block.file_path:
-        import os
-        from pathlib import Path
-        try:
-            file_path = Path(db_block.file_path)
-            if file_path.exists() and file_path.is_file():
-                os.remove(file_path)
-                print(f"Deleted block file: {file_path}")
-        except Exception as e:
-            print(f"Error deleting block file {db_block.file_path}: {e}")
-
-    db.delete(db_block)
+    # Soft Delete only
+    db_block.is_deleted = True
+    
     db.commit()
     return {"ok": True}
+
+@router.post("/blocks/{block_id}/restore", response_model=block_schema.TranscriptionBlock)
+def restore_block(block_id: str, db: DBSession = Depends(get_db)):
+    db_block = db.query(BlockModel).filter(BlockModel.id == block_id).first()
+    if not db_block:
+        raise HTTPException(status_code=404, detail="Block not found")
+    
+    db_block.is_deleted = False
+    
+    db.commit()
+    db.refresh(db_block)
+    return db_block
+
+@router.delete("/{session_id}/trash")
+def empty_trash(session_id: str, db: DBSession = Depends(get_db)):
+    """
+    Permanently delete all blocks in trash for this session.
+    """
+    session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    deleted_blocks = db.query(BlockModel).filter(
+        BlockModel.session_id == session_id,
+        BlockModel.is_deleted == True
+    ).all()
+    
+    if not deleted_blocks:
+          return {"ok": True, "deleted_count": 0}
+
+    import os
+    from pathlib import Path
+    
+    count = 0
+    for block in deleted_blocks:
+        # Physical File Deletion
+        if block.file_path:
+            try:
+                # Resolve relative paths if needed, assuming absolute for now as per previous code
+                file_path = Path(block.file_path)
+                if file_path.exists() and file_path.is_file():
+                    os.remove(file_path)
+                    print(f"Deleted block file: {file_path}")
+            except Exception as e:
+                print(f"Error deleting block file {block.file_path}: {e}")
+        
+        db.delete(block)
+        count += 1
+        
+    db.commit()
+    return {"ok": True, "deleted_count": count}

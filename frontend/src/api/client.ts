@@ -31,6 +31,10 @@ export const endpoints = {
             create: (sessionId: string) => `/api/sessions/${sessionId}/blocks`,
             delete: (blockId: string) => `/api/sessions/blocks/${blockId}`,
             update: (blockId: string) => `/api/sessions/blocks/${blockId}`,
+            restore: (blockId: string) => `/api/sessions/blocks/${blockId}/restore`,
+        },
+        trash: {
+            empty: (sessionId: string) => `/api/sessions/${sessionId}/trash`,
         }
     },
     templates: {

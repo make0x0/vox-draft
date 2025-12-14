@@ -23,6 +23,7 @@ class TranscriptionBlock(TranscriptionBlockBase):
     session_id: str
     created_at: datetime
     timestamp: Optional[str] = None
+    is_deleted: bool = False
 
 
     class Config:
