@@ -88,8 +88,26 @@ def delete_session(session_id: str, db: DBSession = Depends(get_db)):
     if not db_session:
          raise HTTPException(status_code=404, detail="Session not found")
     
-    # Cascade delete should be handled by DB or manually delete blocks
-    # Assuming DB cascade or we delete manually
+    # Physical File Deletion
+    blocks = db.query(BlockModel).filter(BlockModel.session_id == session_id).all()
+    import os
+    from pathlib import Path
+
+    for block in blocks:
+        if block.file_path:
+            try:
+                # Resolve path relative to backend root or absolute
+                # Assuming file_path is stored as absolute or relative to known root.
+                # If stored as relative "data/audio/...", we need to know CWD.
+                # Backend CWD is usually app root.
+                file_path = Path(block.file_path)
+                if file_path.exists() and file_path.is_file():
+                    os.remove(file_path)
+                    print(f"Deleted file: {file_path}")
+            except Exception as e:
+                print(f"Error deleting file {block.file_path}: {e}")
+
+    # Cascade delete DB records
     db.query(BlockModel).filter(BlockModel.session_id == session_id).delete()
     db.delete(db_session)
     db.commit()
@@ -141,6 +159,18 @@ def delete_block(block_id: str, db: DBSession = Depends(get_db)):
     if not db_block:
         raise HTTPException(status_code=404, detail="Block not found")
     
+    # Physical File Deletion
+    if db_block.file_path:
+        import os
+        from pathlib import Path
+        try:
+            file_path = Path(db_block.file_path)
+            if file_path.exists() and file_path.is_file():
+                os.remove(file_path)
+                print(f"Deleted block file: {file_path}")
+        except Exception as e:
+            print(f"Error deleting block file {db_block.file_path}: {e}")
+
     db.delete(db_block)
     db.commit()
     return {"ok": True}
