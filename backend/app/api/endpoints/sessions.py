@@ -157,6 +157,17 @@ def empty_session_trash(db: DBSession = Depends(get_db)):
 
 # --- Block Operations ---
 
+@router.get("/{session_id}/blocks", response_model=List[block_schema.TranscriptionBlock])
+def list_session_blocks(session_id: str, db: DBSession = Depends(get_db)):
+    """
+    List all blocks for a session (ordered).
+    """
+    session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    return session.blocks
+
 @router.post("/{session_id}/blocks", response_model=block_schema.TranscriptionBlock)
 async def create_block(session_id: str, block_in: block_schema.TranscriptionBlockBase, db: DBSession = Depends(get_db)):
     # Check session exists
