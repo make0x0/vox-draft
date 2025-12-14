@@ -13,11 +13,15 @@ class Settings(BaseSettings):
     AZURE_OPENAI_API_KEY: str = os.getenv("AZURE_OPENAI_API_KEY", "")
     AZURE_OPENAI_AD_TOKEN: str = os.getenv("AZURE_OPENAI_AD_TOKEN", "") # Bearer Token support
     AZURE_OPENAI_ENDPOINT: str = "" # Set by yaml logic only
+    
+    # Gemini
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
     # Loaded from yaml
     ALLOWED_ORIGINS: list = ["*"]
     STT_API_URL: str = ""
     STT_PROVIDER: str = "openai"
+    STT_GEMINI_MODEL: str = "gemini-2.5-flash"
     STT_AZURE_DEPLOYMENT: str = "whisper"
     STT_AZURE_API_VERSION: str = "2024-06-01"
     STT_AZURE_ENDPOINT: str = ""
@@ -28,6 +32,7 @@ class Settings(BaseSettings):
     LLM_API_URL: str = ""
     LLM_PROVIDER: str = "openai"
     LLM_MODEL: str = "gpt-4o"
+    LLM_GEMINI_MODEL: str = "gemini-2.5-flash"
     LLM_AZURE_DEPLOYMENT: str = "gpt-4o"
     LLM_AZURE_API_VERSION: str = "2024-06-01"
     LLM_AZURE_ENDPOINT: str = ""
@@ -59,6 +64,7 @@ def load_config():
             
             settings.STT_API_URL = stt.get("openai_api_url", "")
             settings.STT_PROVIDER = stt.get("provider", "openai")
+            settings.STT_GEMINI_MODEL = stt.get("gemini_model", "gemini-2.5-flash")
             settings.STT_AZURE_DEPLOYMENT = stt.get("azure_deployment", "whisper")
             settings.STT_AZURE_API_VERSION = stt.get("azure_api_version", "2024-06-01")
             settings.STT_AZURE_ENDPOINT = stt.get("azure_endpoint", "") # Must be in YAML
@@ -70,6 +76,7 @@ def load_config():
             settings.LLM_API_URL = llm.get("openai_api_url", "")
             settings.LLM_PROVIDER = llm.get("provider", "openai")
             settings.LLM_MODEL = llm.get("model", "gpt-4o")
+            settings.LLM_GEMINI_MODEL = llm.get("gemini_model", "gemini-2.5-flash")
             settings.LLM_AZURE_DEPLOYMENT = llm.get("azure_deployment", "gpt-4o")
             settings.LLM_AZURE_API_VERSION = llm.get("azure_api_version", "2024-06-01")
             settings.LLM_AZURE_ENDPOINT = llm.get("azure_endpoint", "") # Must be in YAML
@@ -82,6 +89,11 @@ def load_config():
             settings.TIMEZONE = app_config.get("timezone", "UTC")
             settings.DATE_FORMAT = app_config.get("date_format", "%Y-%m-%d %H:%M:%S")
             settings.NOTIFICATIONS = app_config.get("notifications", {})
+            
+            # Load Gemini API Key from YAML if present (allowing User override via config.yaml, though usually ENV)
+            # Typically users might put keys in config.yaml if self-hosting without env.
+            if system.get("gemini_api_key"):
+                settings.GEMINI_API_KEY = system.get("gemini_api_key")
 
 def _parse_azure_config(settings_obj, prefix, raw_endpoint):
     """

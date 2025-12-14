@@ -10,3 +10,4 @@ openai
 
 PyYAML
 pydantic-settings
+google-generativeai

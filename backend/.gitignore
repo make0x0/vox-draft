@@ -5,6 +5,7 @@ venv/
 .venv/
 .env
 data/
-!data/settings.yaml
+!data/settings.yaml.sample
+# !data/settings.yaml
 *.db
 *.sqlite

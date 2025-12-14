@@ -439,21 +439,116 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                                 {/* STT Config */}
                                 <h4 className="text-md font-bold text-gray-900 border-b pb-2 mb-4">音声認識 API (STT)</h4>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">プロバイダー</span>{apiConfig.stt.provider}</div>
-                                    <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">デプロイメント/モデル</span>{apiConfig.stt.azure_deployment || "whisper-1"}</div>
-                                    <div className="col-span-2 bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold flex justify-between">エンドポイント URL <span>(Timeout: {apiConfig.stt.timeout}s)</span></span>
-                                        <div className="font-mono text-xs break-all text-gray-600">{apiConfig.stt.azure_endpoint || apiConfig.stt.url}</div>
+                                <div className="space-y-4 mb-8">
+                                    {/* Provider Selection */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">プロバイダー</label>
+                                            <select
+                                                value={(generalSettings as any).stt_provider || apiConfig.stt.provider || "openai"}
+                                                onChange={(e) => setGeneralSettings({ ...generalSettings, stt_provider: e.target.value } as any)}
+                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                            >
+                                                <option value="openai">OpenAI (Whisper)</option>
+                                                <option value="azure">Azure OpenAI</option>
+                                                <option value="gemini">Google Gemini</option>
+                                            </select>
+                                            <div className="text-xs text-gray-500 mt-1">選択するとシステム設定を上書きします</div>
+                                        </div>
+                                        {/* Gemini Model (Conditional) */}
+                                        {((generalSettings as any).stt_provider === 'gemini') && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Gemini モデル</label>
+                                                <select
+                                                    value={(generalSettings as any).stt_gemini_model || "gemini-1.5-flash"}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, stt_gemini_model: e.target.value } as any)}
+                                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                                >
+                                                    {((generalSettings as any).gemini_models || ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash"]).map((m: string) => (
+                                                        <option key={m} value={m}>{m}</option>
+                                                    ))}
+                                                </select>
+                                                <div className="text-xs text-gray-500 mt-1">設定ファイル(settings.yaml)から選択</div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Config Display (Effective) */}
+                                    <div className="bg-gray-50 p-3 rounded grid grid-cols-2 gap-4 text-xs text-gray-600 border border-gray-200">
+                                        <div>
+                                            <span className="font-bold block">現在の設定 (Effective):</span>
+                                            Provider: {((generalSettings as any).stt_provider || apiConfig.stt.provider)}
+                                        </div>
+                                        <div>
+                                            <span className="font-bold block">Model / Endpoint:</span>
+                                            {((generalSettings as any).stt_provider === 'gemini')
+                                                ? `Model: ${(generalSettings as any).stt_gemini_model || "gemini-1.5-flash"}`
+                                                : `Endpoint: ${apiConfig.stt.azure_endpoint || apiConfig.stt.url}`}
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* LLM Config */}
-                                <h4 className="text-md font-bold text-gray-900 border-b pb-2 mb-4 mt-8">文章生成 API (LLM)</h4>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">プロバイダー</span>{apiConfig.llm.provider}</div>
-                                    <div className="bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold">モデル/デプロイメント</span>{apiConfig.llm.azure_deployment || apiConfig.llm.model}</div>
-                                    <div className="col-span-2 bg-gray-50 p-2 rounded"><span className="block text-xs text-gray-500 font-bold flex justify-between">エンドポイント URL <span>(Timeout: {apiConfig.llm.timeout}s)</span></span>
-                                        <div className="font-mono text-xs break-all text-gray-600">{apiConfig.llm.azure_endpoint || apiConfig.llm.url}</div>
+                                <h4 className="text-md font-bold text-gray-900 border-b pb-2 mb-4">文章生成 API (LLM)</h4>
+                                <div className="space-y-4 mb-8">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">プロバイダー</label>
+                                            <select
+                                                value={(generalSettings as any).llm_provider || apiConfig.llm.provider || "openai"}
+                                                onChange={(e) => setGeneralSettings({ ...generalSettings, llm_provider: e.target.value } as any)}
+                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                            >
+                                                <option value="openai">OpenAI</option>
+                                                <option value="azure">Azure OpenAI</option>
+                                                <option value="gemini">Google Gemini</option>
+                                            </select>
+                                            <div className="text-xs text-gray-500 mt-1">選択するとシステム設定を上書きします</div>
+                                        </div>
+                                        {((generalSettings as any).llm_provider === 'gemini') && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Gemini モデル</label>
+                                                <select
+                                                    value={(generalSettings as any).llm_gemini_model || "gemini-1.5-flash"}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, llm_gemini_model: e.target.value } as any)}
+                                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                                >
+                                                    {((generalSettings as any).gemini_models || ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash"]).map((m: string) => (
+                                                        <option key={m} value={m}>{m}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded grid grid-cols-2 gap-4 text-xs text-gray-600 border border-gray-200">
+                                        <div>
+                                            <span className="font-bold block">現在の設定 (Effective):</span>
+                                            Provider: {((generalSettings as any).llm_provider || apiConfig.llm.provider)}
+                                        </div>
+                                        <div>
+                                            <span className="font-bold block">Model / Endpoint:</span>
+                                            {((generalSettings as any).llm_provider === 'gemini')
+                                                ? `Model: ${(generalSettings as any).llm_gemini_model || "gemini-1.5-flash"}`
+                                                : `Endpoint: ${apiConfig.llm.azure_deployment || apiConfig.llm.model}`}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* API Keys Section */}
+                                <h4 className="text-md font-bold text-gray-900 border-b pb-2 mb-4">API キー設定 (Overridies)</h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Google Gemini API Key</label>
+                                        <input
+                                            type="password"
+                                            value={(generalSettings as any).gemini_api_key || ""}
+                                            onChange={(e) => setGeneralSettings({ ...generalSettings, gemini_api_key: e.target.value } as any)}
+                                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                            placeholder="AIza..."
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Geminiを使用する場合のみ必要です。環境変数(GEMINI_API_KEY)が設定されている場合は空欄で構いません。
+                                        </p>
                                     </div>
                                 </div>
                             </div>

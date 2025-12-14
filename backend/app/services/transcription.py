@@ -19,6 +19,49 @@ def transcribe_audio_task(block_id: str, db: Session):
         block.text = "(Processing...)"
         db.commit()
 
+        # Determine Provider (Prefer dynamic settings if available)
+        provider = settings.STT_PROVIDER
+        try:
+             # Try to read from settings.yaml if we implement UI switching
+             # We assume 'general' section or 'system' section might have it
+             # For now, we stick to settings.STT_PROVIDER as primary, 
+             # unless we implemented the dynamic override in settings.yaml logic.
+             # Note: Implementation plan said to use SettingsModal. 
+             # So we should check settings_service.
+             from app.services.settings_file import settings_service
+             user_settings = settings_service.get_general_settings()
+             if user_settings.get("stt_provider"):
+                 provider = user_settings.get("stt_provider")
+        except:
+             pass
+
+        if provider == "gemini":
+            from app.services.gemini_service import gemini_service
+            model_name = settings.STT_GEMINI_MODEL
+            try:
+                # Override model from user settings if present
+                if user_settings.get("stt_gemini_model"):
+                    model_name = user_settings.get("stt_gemini_model")
+            except: pass
+
+            print(f"Transcribing block {block_id} using Gemini ({model_name})...")
+            block.text = "(Processing with Gemini...)"
+            db.commit()
+
+            try:
+                text = gemini_service.transcribe(block.file_path, model_name=model_name)
+                block.text = text
+                db.add(block)
+                db.commit()
+                print(f"Gemini Transcription finished for block {block_id}")
+                return
+            except Exception as e:
+                block.text = f"[Error] Gemini Error: {str(e)}"
+                db.add(block)
+                db.commit()
+                return
+
+        # OpenAI / Azure Logic
         client = get_openai_client("stt")
         model_name = settings.STT_AZURE_DEPLOYMENT if settings.STT_PROVIDER == "azure" else "whisper-1"
 
@@ -30,7 +73,7 @@ def transcribe_audio_task(block_id: str, db: Session):
         retry_delay = 1.0
         
         # Get base URL for display
-        base_url = client.base_url
+        base_url = str(client.base_url)
         
         for attempt in range(max_retries + 1):
             try:

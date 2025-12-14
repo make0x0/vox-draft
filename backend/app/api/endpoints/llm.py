@@ -16,14 +16,48 @@ class ChatRequest(BaseModel):
 
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
+    # Determine Provider & Model
+    provider = settings.LLM_PROVIDER
+    model_to_use = request.model
+    
+    # Check dynamic settings
+    try:
+        from app.services.settings_file import settings_service
+        user_settings = settings_service.get_general_settings()
+        if user_settings.get("llm_provider"):
+            provider = user_settings.get("llm_provider")
+        
+        # Override model if requested or defaulted
+        if provider == "gemini":
+            model_to_use = settings.LLM_GEMINI_MODEL
+            if user_settings.get("llm_gemini_model"):
+                model_to_use = user_settings.get("llm_gemini_model")
+        elif provider == "azure":
+            model_to_use = settings.LLM_AZURE_DEPLOYMENT
+    except: pass
+
+    # Gemini Logic
+    if provider == "gemini":
+        from app.services.gemini_service import gemini_service
+        async def gemini_generator():
+            try:
+                yield f"data: {json.dumps({'type': 'status', 'message': '(Connecting to Gemini...)'})}\n\n"
+                
+                # Use thread pool for sync generator in async? or just iterate
+                # StreamingResponse takes async generator or sync iterator.
+                # Our service is sync generator.
+                for chunk in gemini_service.stream_chat(request.messages, model_name=model_to_use):
+                     yield f"data: {json.dumps({'content': chunk})}\n\n"
+                
+                yield "data: [DONE]\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': f'Gemini Error: {str(e)}'})}\n\n"
+
+        return StreamingResponse(gemini_generator(), media_type="text/event-stream")
+
+    # OpenAI / Azure Logic
     client = get_openai_client("llm")
     
-    # Determine model/deployment
-    if settings.LLM_PROVIDER == "azure":
-        model_to_use = settings.LLM_AZURE_DEPLOYMENT
-    else:
-        model_to_use = request.model
-
     # Prepare OpenAI stream
     import asyncio
     from openai import APIStatusError, APIConnectionError
@@ -34,7 +68,7 @@ async def chat_stream(request: ChatRequest):
         # Manual retry settings
         max_retries = settings.LLM_MAX_RETRIES
         retry_delay = 1.0
-        base_url = client.base_url
+        base_url = str(client.base_url)
 
         for attempt in range(max_retries + 1):
             try:
@@ -98,13 +132,42 @@ class TitleGenerationRequest(BaseModel):
 
 @router.post("/generate_title")
 async def generate_title(request: TitleGenerationRequest):
+    # Determine Provider
+    provider = settings.LLM_PROVIDER
+    model_to_use = request.model
+    
+    # Dynamic settings check
+    try:
+        from app.services.settings_file import settings_service
+        user_settings = settings_service.get_general_settings()
+        if user_settings.get("llm_provider"):
+            provider = user_settings.get("llm_provider")
+        
+        if provider == "gemini":
+            model_to_use = settings.LLM_GEMINI_MODEL
+            if user_settings.get("llm_gemini_model"):
+                model_to_use = user_settings.get("llm_gemini_model")
+        elif provider == "azure":
+             model_to_use = settings.LLM_AZURE_DEPLOYMENT
+    except: pass
+    
+    # Gemini Logic
+    if provider == "gemini":
+        from app.services.gemini_service import gemini_service
+        try:
+             # Title generation prompt construction
+             sys_prompt = settings_service.get_system_prompt("title_summary") or "Generate a concise title."
+             messages = [
+                 {"role": "system", "content": sys_prompt},
+                 {"role": "user", "content": f"Text: {request.text[:1000]}..."}
+             ]
+             title = gemini_service.complete_chat(messages, model_name=model_to_use)
+             return {"title": title.strip()}
+        except Exception as e:
+             raise HTTPException(status_code=500, detail=str(e))
+
     client = get_openai_client("llm")
     
-    if settings.LLM_PROVIDER == "azure":
-        model_to_use = settings.LLM_AZURE_DEPLOYMENT
-    else:
-        model_to_use = request.model
-
     try:
         completion = client.chat.completions.create(
             model=model_to_use,
