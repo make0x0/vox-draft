@@ -41,6 +41,30 @@
 - **対象ファイル**: `frontend/src/api/client.ts`
 - **検証方法**: スマホからHTTPS経由でセッション一覧・設定が表示されることを確認
 
+### [BUG-003] nginx経由でWebSocket接続できない（処理中表示が出ない）
+- **日付**: 2025-12-15
+- **状態**: 🟢完了
+- **報告内容**: HTTPS経由で再認識時「処理中」表示が見えない（localhost:5173では動作）
+- **原因(Root Cause)**: 
+  1. `useWebSocket.ts` がポート8000に直接接続していた
+  2. `nginx.conf` に `/ws` 用の location ブロックがなかった
+  3. nginx.conf がビルド時コピーでマウントされていなかった
+- **修正内容(Fix)**:
+  1. `useWebSocket.ts`: nginx経由時は `wss://host/ws` を使用
+  2. `nginx.conf`: `/ws` location ブロック追加（backend へプロキシ）
+  3. `docker-compose.yml`: nginx.conf をボリュームマウント
+- **対象ファイル**: `useWebSocket.ts`, `nginx.conf`, `docker-compose.yml`
+- **検証方法**: スマホから再認識ボタンで「処理中」通知を確認
+
+### [BUG-004] 暗号化APIキーが復号されずにAPIリクエストに使用される
+- **日付**: 2025-12-15
+- **状態**: 🟢完了
+- **報告内容**: 設定画面でAPIキーを暗号化保存後、Gemini APIリクエストで `ENC:xxx` がそのまま送信されエラー
+- **原因(Root Cause)**: `get_general_settings()` が暗号化された値をそのまま返していた。サービス側で復号していなかった。
+- **修正内容(Fix)**: `_decrypt_sensitive_fields()` を追加し、`get_general_settings()` で自動復号
+- **対象ファイル**: `backend/app/services/settings_file.py`
+- **検証方法**: Gemini APIリクエストが成功（HTTP 429 レートリミットで確認）
+
 ---
 
 ## 対応中
@@ -60,3 +84,10 @@
 HTTPS環境では、すべてのAPIリクエストもHTTPSで行う必要がある。
 - nginx経由の場合は相対パス (`/api/`) を使用
 - 開発環境 (ポート5173) では直接バックエンドにアクセス
+
+### nginx プロキシパターン
+nginx 経由でアクセスする場合、すべてのエンドポイントに location ブロックが必要。
+- `/api/` → backend
+- `/ws` → backend (WebSocket)
+- `/` → frontend
+- 設定ファイルはボリュームマウントで再起動のみで反映可能に

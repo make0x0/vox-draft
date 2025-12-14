@@ -119,17 +119,35 @@ class SettingsFileService:
         self._write_yaml(data)
 
     # --- General Settings ---
-    def get_general_settings(self) -> Dict[str, Any]:
-        data = self._read_yaml()
-        return data.get("general", {})
-
-    # Fields that should be encrypted when saved
+    
+    # Fields that should be encrypted/decrypted
     SENSITIVE_FIELDS = [
         "openai_api_key",
         "azure_openai_api_key",
         "azure_openai_ad_token",
         "gemini_api_key",
     ]
+
+    def _decrypt_sensitive_fields(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Decrypt sensitive fields when reading settings."""
+        try:
+            from app.services.crypto import decrypt_if_encrypted
+            
+            decrypted_data = data.copy()
+            for field in self.SENSITIVE_FIELDS:
+                if field in decrypted_data and decrypted_data[field]:
+                    decrypted_data[field] = decrypt_if_encrypted(str(decrypted_data[field]))
+            
+            return decrypted_data
+        except Exception as e:
+            print(f"[Settings] Decryption error: {e}")
+            return data
+
+    def get_general_settings(self) -> Dict[str, Any]:
+        data = self._read_yaml()
+        general = data.get("general", {})
+        # Decrypt sensitive fields before returning
+        return self._decrypt_sensitive_fields(general)
 
     def _encrypt_sensitive_fields(self, updates: Dict[str, Any]) -> Dict[str, Any]:
         """Encrypt sensitive fields if they're not already encrypted."""
