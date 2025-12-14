@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as Diff from 'diff';
 import { Edit3, Eye, Save, ChevronLeft, ChevronRight, Clock, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -26,16 +27,37 @@ export const Editor: React.FC<EditorProps> = ({
     onSaveRevision,
     onDeleteRevision
 }) => {
-    const [editorMode, setEditorMode] = useState<'write' | 'preview'>('write');
+    const [editorMode, setEditorMode] = useState<'write' | 'preview' | 'diff'>('write');
 
     const hasPrev = currentRevisionIndex < revisions.length - 1;
     const hasNext = currentRevisionIndex > 0;
 
     // Display info for current view
-    // If index -1 (or no revisions), it's "Current / Unsaved"
-    // If index >= 0, it's "Rev X"
     const currentRev = (currentRevisionIndex >= 0 && revisions.length > 0) ? revisions[currentRevisionIndex] : null;
     const isLatest = currentRevisionIndex === 0 || currentRevisionIndex === -1;
+
+    // Diff Logic
+    const renderDiff = () => {
+        const prevContent = (hasPrev && revisions.length > 0)
+            ? revisions[currentRevisionIndex + 1].content
+            : "";
+        const changes = Diff.diffChars(prevContent, content);
+
+        return (
+            <div className="w-full h-full p-6 overflow-y-auto bg-white whitespace-pre-wrap font-mono text-sm">
+                {changes.map((part, index) => {
+                    const color = part.added ? 'bg-green-100 text-green-800' :
+                        part.removed ? 'bg-red-100 text-red-800 decoration-red-500 line-through' :
+                            'text-gray-800';
+                    return (
+                        <span key={index} className={color}>
+                            {part.value}
+                        </span>
+                    );
+                })}
+            </div>
+        );
+    };
 
     return (
         <section
@@ -49,6 +71,7 @@ export const Editor: React.FC<EditorProps> = ({
                     <div className="flex gap-1 bg-gray-200 p-1 rounded">
                         <button onClick={() => setEditorMode('write')} className={`px-3 py-1 text-xs rounded flex items-center gap-1 ${editorMode === 'write' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Edit3 size={12} /> 編集</button>
                         <button onClick={() => setEditorMode('preview')} className={`px-3 py-1 text-xs rounded flex items-center gap-1 ${editorMode === 'preview' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Eye size={12} /> プレビュー</button>
+                        {revisions.length > 0 && <button onClick={() => setEditorMode('diff')} disabled={!hasPrev} className={`px-3 py-1 text-xs rounded flex items-center gap-1 ${editorMode === 'diff' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 disabled:opacity-50'}`}>Diff</button>}
                     </div>
                     <button onClick={onSaveRevision} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-gray-50 flex items-center gap-1"><Save size={12} /> 保存(Rev作成)</button>
                 </div>
@@ -101,12 +124,14 @@ export const Editor: React.FC<EditorProps> = ({
             <div className="flex-1 relative overflow-hidden">
                 {editorMode === 'write' ? (
                     <textarea className="w-full h-full p-6 resize-none focus:outline-none font-mono text-sm leading-relaxed text-gray-800 bg-white" value={content} onChange={(e) => setContent(e.target.value)} placeholder="# ここに生成結果が表示されます..." />
-                ) : (
+                ) : editorMode === 'preview' ? (
                     <div className="w-full h-full p-6 overflow-y-auto bg-white">
                         <article className="prose prose-sm max-w-none prose-headings:font-bold prose-h1:text-2xl prose-h2:text-xl prose-a:text-blue-600 hover:prose-a:text-blue-500">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
                         </article>
                     </div>
+                ) : (
+                    renderDiff()
                 )}
             </div>
         </section>

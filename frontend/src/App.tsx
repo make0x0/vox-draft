@@ -366,16 +366,15 @@ export default function App() {
     console.log("Full Prompt Constructed:", fullUserContent);
 
     const messages: any[] = [
-      // If the structure explicitly includes {system_prompt}, we might NOT want to duplicate it in the system role?
-      // Or we just use a generic system role.
       { role: "system", content: "You are a helpful and intelligent AI assistant. Please output your response in Markdown format." },
       { role: "user", content: fullUserContent }
     ];
 
-    // Reset or prepare editor content
-    // We want to APPEND or replace? 
-    // Let's create a new Markdown section
-    setEditorContent(prev => prev + `\n\n## AI生成結果\n`);
+    // Save current state as revision before overwriting
+    await handleSaveRevision("Before AI Execution");
+
+    // Clear editor content to receive new AI output
+    setEditorContent("");
 
     const llmTaskId = Math.random().toString(36).substring(7);
 
@@ -407,9 +406,8 @@ export default function App() {
       // Success completion (if not already error)
       setTasks(prev => prev.map(t => t.id === llmTaskId ? { ...t, type: 'success', message: '生成が完了しました', endTime: Date.now() } : t));
 
-      // Auto-save revision
-      const finalContent = editorContent + `\n\n## AI生成結果\n` + generatedText;
-      handleSaveRevision("AI Generation Result", finalContent);
+      // Auto-save revision of the result
+      await handleSaveRevision("AI Generation Result", generatedText); // Use generatedText directly
 
     } catch (err) {
       console.error("LLM Generation Error caught in App.tsx:", err);
