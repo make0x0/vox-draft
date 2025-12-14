@@ -82,7 +82,16 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
         setDraggedBlockHeight(null);
     };
 
+    // Reset drag state on mouse up (backup for when dragend doesn't fire)
+    const handleMouseUp = () => {
+        if (draggedBlockIndex !== null) {
+            resetDragState();
+        }
+    };
+
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+        // Prevent default ghost image issues
+        e.dataTransfer.setData('text/plain', '');
         setDraggedBlockIndex(index);
         setDraggedBlockHeight(e.currentTarget.offsetHeight);
         // Required for Firefox
@@ -175,6 +184,14 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
         resetDragState();
     };
 
+    const handleDragLeave = (e: React.DragEvent) => {
+        // Only reset if leaving the container entirely
+        const relatedTarget = e.relatedTarget as HTMLElement;
+        if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+            setDragOverIndex(null);
+        }
+    };
+
     const expandedBlock = blocks.find(b => b.id === expandedBlockId);
 
     // Filter blocks based on trash mode using optional isDeleted
@@ -246,7 +263,11 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50 flex flex-col gap-3">
+            <div
+                className="flex-1 overflow-y-auto p-4 bg-gray-50/50 flex flex-col gap-3"
+                onMouseUp={handleMouseUp}
+                onDragLeave={handleDragLeave}
+            >
                 {displayBlocks.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-10 text-gray-400 text-sm">
                         {showTrash ? "ゴミ箱は空です" : "ブロックがありません"}
@@ -315,10 +336,12 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                                 `}
                             >
                                 <div
-                                    draggable={!showTrash}
+                                    draggable={!showTrash && !isProcessing}
                                     onDragStart={(e) => handleDragStart(e, index)}
                                     onDragEnd={handleDragEnd}
-                                    className="flex flex-col items-center justify-center cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 pt-1 hover:bg-black/5 rounded px-0.5 transition-colors"
+                                    className={`flex flex-col items-center justify-center pt-1 hover:bg-black/5 rounded px-0.5 transition-colors select-none
+                                        ${(!showTrash && !isProcessing) ? 'cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500' : 'cursor-not-allowed text-gray-200'}
+                                    `}
                                 >
                                     <GripVertical size={16} />
                                 </div>
