@@ -35,8 +35,9 @@ class VocabularyItemBase(BaseModel):
 class VocabularyItemCreate(VocabularyItemBase):
     pass
 
-class VocabularyItemUpdate(VocabularyItemBase):
-    pass
+class VocabularyItemUpdate(BaseModel):
+    reading: Optional[str] = None
+    word: Optional[str] = None
 
 class VocabularyItem(VocabularyItemBase):
     id: str
