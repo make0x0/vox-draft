@@ -20,20 +20,41 @@ def transcribe_audio_task(block_id: str, db: Session):
         db.commit()
 
         # Determine Provider (Prefer dynamic settings if available)
+        # Determine Provider (Prefer dynamic settings if available)
         provider = settings.STT_PROVIDER
+        stt_prompt = "" # Default empty prompt
+        use_vocab = False
+        
         try:
-             # Try to read from settings.yaml if we implement UI switching
-             # We assume 'general' section or 'system' section might have it
-             # For now, we stick to settings.STT_PROVIDER as primary, 
-             # unless we implemented the dynamic override in settings.yaml logic.
-             # Note: Implementation plan said to use SettingsModal. 
-             # So we should check settings_service.
              from app.services.settings_file import settings_service
              user_settings = settings_service.get_general_settings()
              if user_settings.get("stt_provider"):
                  provider = user_settings.get("stt_provider")
-        except:
-             pass
+             
+             # Fetch Prompt Config
+             prompts = user_settings.get("stt_prompts", {})
+             stt_prompt = prompts.get(provider, "")
+             use_vocab = user_settings.get("use_vocabulary_for_stt", False)
+             
+             # Append Vocabulary if enabled
+             if use_vocab:
+                 vocab_list = settings_service.get_vocabulary()
+                 if vocab_list:
+                     vocab_text = ", ".join([f"{v['word']}({v['reading']})" for v in vocab_list])
+                     # Format depends on provider, but generally appending is safe for context
+                     # For OpenAI/Azure, prompt is just context text.
+                     # For Gemini, it's instruction.
+                     
+                     if provider == "gemini":
+                         stt_prompt += f"\n\nPlease verify whether the following terms are included in the audio and transcribe them correctly using the specified readings:\n{vocab_text}"
+                     else:
+                         # OpenAI/Azure prompt is limited in length (224 tokens usually?) 
+                         # Actually prompt is for "style and context". A list of words helps.
+                         # We append it.
+                         stt_prompt += f" {vocab_text}"
+
+        except Exception as e:
+             print(f"Error loading STT settings: {e}")
 
         if provider == "gemini":
             from app.services.gemini_service import gemini_service
@@ -49,7 +70,14 @@ def transcribe_audio_task(block_id: str, db: Session):
             db.commit()
 
             try:
-                text = gemini_service.transcribe(block.file_path, model_name=model_name)
+                # Use the configured prompt (or default if empty, but we set default in settings.yaml)
+                # If settings.yaml gave us "", Gemini might need a base instruction?
+                # The user default we set was "Transcribe..."
+                # If user clears it, we might want a fallback?
+                # Let's assume if stt_prompt is empty, we use a hardcoded fallback just in case.
+                final_prompt = stt_prompt if stt_prompt.strip() else "Transcribe the following audio file verbatim."
+
+                text = gemini_service.transcribe(block.file_path, model_name=model_name, prompt=final_prompt)
                 block.text = text
                 db.add(block)
                 db.commit()
@@ -91,12 +119,16 @@ def transcribe_audio_task(block_id: str, db: Session):
                 print(f"Transcribing file: {block.file_path} using model {model_name} (Attempt {attempt+1})")
                 
                 with open(block.file_path, "rb") as audio_file:
-                    transcription = client.audio.transcriptions.create(
-                        model=model_name, 
-                        file=audio_file,
-                        response_format="text", 
-                        # Timeout is handled by client settings, but we wrap call to catch errors
-                    )
+                    # Construct args
+                    kwargs = {
+                        "model": model_name,
+                        "file": audio_file,
+                        "response_format": "text"
+                    }
+                    if stt_prompt.strip():
+                        kwargs["prompt"] = stt_prompt.strip()
+
+                    transcription = client.audio.transcriptions.create(**kwargs)
                 
                 # Success
                 block.text = transcription

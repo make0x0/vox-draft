@@ -25,7 +25,7 @@ class GeminiService:
             pass
         return settings.GEMINI_API_KEY
 
-    def transcribe(self, file_path: str, model_name: str = "gemini-1.5-flash") -> str:
+    def transcribe(self, file_path: str, model_name: str = "gemini-1.5-flash", prompt: str = None) -> str:
         """
         Transcribes audio using Gemini 1.5 Flash.
         Uploads file to Google AI Studio, generates content, then deletes file?
@@ -43,10 +43,10 @@ class GeminiService:
 
             model = genai.GenerativeModel(model_name)
             
-            # Prompt for transcription
-            prompt = "Transcribe the following audio file verbatim. Do not add any commentary or markdown formatting unless requested. Just the text."
+            # Use provided prompt or default
+            final_prompt = prompt if prompt else "Transcribe the following audio file verbatim. Do not add any commentary or markdown formatting unless requested. Just the text."
             
-            response = model.generate_content([prompt, uploaded_file])
+            response = model.generate_content([final_prompt, uploaded_file])
             
             # Cleanup? (Wait for processing? upload_file handles waiting for processing state?)
             # genai.upload_file returns partially processed file maybe?

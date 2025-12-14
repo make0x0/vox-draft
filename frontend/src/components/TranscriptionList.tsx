@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Mic, Upload, Type, GripVertical, Maximize2, Play, RefreshCw, Trash2, Save } from 'lucide-react';
+import { Mic, Upload, Type, GripVertical, Maximize2, Play, RefreshCw, Trash2, Save, Copy } from 'lucide-react';
 import type { TranscriptionBlock } from '../types';
 
 interface TranscriptionListProps {
@@ -123,6 +123,22 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                                                     <button onClick={() => onReTranscribe(block.id)} className="p-1 text-gray-400 hover:text-green-600 rounded hover:bg-green-50" title="再認識"><RefreshCw size={14} /></button>
                                                 </>
                                             )}
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(block.text);
+                                                    // Optional: Toast or feedback? 
+                                                    // For now simple alert or just assume works. 
+                                                    // Ideally we change icon state briefly but that requires local state per block or a global toast.
+                                                    // Let's use a simple alert for MVP or just rely on user knowing it worked?
+                                                    // User asked for "Copy button", distinct from "Copy Feedback".
+                                                    // Let's try to add a simple visual feedback if possible, but localized state is complex here.
+                                                    // Using a standard "Copy" icon.
+                                                }}
+                                                className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50"
+                                                title="コピー"
+                                            >
+                                                <Copy size={14} />
+                                            </button>
                                             <button onClick={() => onDeleteBlock(block.id)} className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-red-50" title="削除"><Trash2 size={14} /></button>
                                         </div>
                                     </div>

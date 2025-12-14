@@ -486,6 +486,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 : `Endpoint: ${apiConfig.stt.azure_endpoint || apiConfig.stt.url}`}
                                         </div>
                                     </div>
+
+                                    {/* STT Options (Prompts & Vocab) */}
+                                    <div className="mt-4 border-t pt-4">
+                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={(generalSettings as any).use_vocabulary_for_stt || false}
+                                                onChange={(e) => setGeneralSettings({ ...generalSettings, use_vocabulary_for_stt: e.target.checked } as any)}
+                                                className="w-4 h-4 text-blue-600 rounded"
+                                            />
+                                            登録済みの単語（用語集）をプロンプトに含める
+                                        </label>
+
+                                        <div className="space-y-3">
+                                            <label className="block text-sm font-medium text-gray-700">認識用プロンプト (システム指示)</label>
+                                            <p className="text-xs text-gray-500 mb-1">
+                                                {((generalSettings as any).stt_provider === 'gemini')
+                                                    ? "Geminiへの指示を記述します。空欄の場合はデフォルトが使用されます。"
+                                                    : "OpenAI/Azureへのスタイルヒントを記述します（任意）。"}
+                                            </p>
+                                            <textarea
+                                                value={
+                                                    ((generalSettings as any).stt_prompts)?.[(generalSettings as any).stt_provider || 'openai'] || ""
+                                                }
+                                                onChange={(e) => {
+                                                    const currentProvider = (generalSettings as any).stt_provider || 'openai';
+                                                    const currentPrompts = (generalSettings as any).stt_prompts || {};
+                                                    setGeneralSettings({
+                                                        ...generalSettings,
+                                                        stt_prompts: {
+                                                            ...currentPrompts,
+                                                            [currentProvider]: e.target.value
+                                                        }
+                                                    } as any)
+                                                }}
+                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm h-24"
+                                                placeholder={((generalSettings as any).stt_provider === 'gemini') ? "Transcribe the following audio..." : "専門用語やスタイルを指定..."}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* LLM Config */}

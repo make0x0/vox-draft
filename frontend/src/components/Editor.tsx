@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as Diff from 'diff';
-import { Edit3, Eye, Save, ChevronLeft, ChevronRight, Clock, Trash2, ChevronDown, FilePlus, RefreshCw } from 'lucide-react';
+import { Edit3, Eye, Save, ChevronLeft, ChevronRight, Clock, Trash2, ChevronDown, FilePlus, RefreshCw, Copy } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { EditorRevision } from '../types';
@@ -101,6 +101,18 @@ export const Editor: React.FC<EditorProps> = ({
                             {isLatest ? <Save size={12} /> : <RefreshCw size={12} />}
                             <span>{isLatest ? "新Rev作成" : "最新へ復元(新Rev)"}</span>
                             <ChevronDown size={10} />
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                navigator.clipboard.writeText(content);
+                                // Simple feedback?
+                            }}
+                            className="ml-2 text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-gray-50 flex items-center gap-1 transition-colors"
+                            title="全体をコピー"
+                        >
+                            <Copy size={12} />
+                            <span>Copy</span>
                         </button>
 
                         {showSaveMenu && (
