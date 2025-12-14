@@ -52,12 +52,29 @@ export const useBlocks = () => {
         if (!sessionId) return;
         try {
             if (type === 'text') {
-                await client.post(endpoints.sessions.blocks.create(sessionId), {
+                const response = await client.post(endpoints.sessions.blocks.create(sessionId), {
                     type: 'text',
                     text: content,
                     session_id: sessionId
                 });
-                await fetchBlocks(sessionId);
+
+                const b = response.data;
+                const newBlock: TranscriptionBlock = {
+                    id: b.id,
+                    type: b.type,
+                    text: b.text || '',
+                    timestamp: (() => {
+                        const d = new Date(b.created_at + (b.created_at.endsWith('Z') ? '' : 'Z'));
+                        return `${d.getFullYear()}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+                    })(),
+                    isChecked: b.is_checked,
+                    duration: b.duration,
+                    fileName: b.file_name,
+                    isDeleted: b.is_deleted,
+                    color: b.color
+                };
+
+                setBlocks(prev => [...prev, newBlock]);
             }
         } catch (err) {
             console.error(err);
