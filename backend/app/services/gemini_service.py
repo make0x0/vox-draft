@@ -52,11 +52,18 @@ class GeminiService:
             # genai.upload_file returns partially processed file maybe?
             # Usually for audio it's fast. Video needs processing.
             
-            text = response.text
-            return text
+            # Safety check for empty response
+            if response.candidates and response.parts:
+                return response.text
+            else:
+                print(f"Gemini returned no text. Finish reason: {response.candidates[0].finish_reason if response.candidates else 'No candidates'}")
+                return ""
 
         except Exception as e:
             print(f"Gemini Transcription Error: {e}")
+            # If it's the specific safe accessor error, handle it
+            if "quick accessor requires the response" in str(e):
+                return ""
             raise e
 
     def stream_chat(self, messages: list, model_name: str = "gemini-1.5-flash"):
@@ -99,8 +106,12 @@ class GeminiService:
             if last_message:
                 response = chat.send_message(last_message["parts"][0], stream=True)
                 for chunk in response:
-                    if chunk.text:
-                        yield chunk.text
+                    # Safe access to text
+                    try:
+                        if chunk.candidates and chunk.parts:
+                             yield chunk.text
+                    except Exception as e:
+                         pass
             else:
                  yield ""
 
