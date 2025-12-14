@@ -5,11 +5,12 @@ from app.api.endpoints import audio, stt, llm, data, sessions, templates, vocabu
 
 app = FastAPI(title="Vox Backend")
 
-# CORS
+# CORS - Note: allow_credentials=False is required when using allow_origins=["*"]
+# For production, specify exact origins and set allow_credentials=True
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=False,  # Must be False when using wildcard origin
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Disposition", "content-disposition"],

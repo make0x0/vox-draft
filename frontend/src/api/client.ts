@@ -1,8 +1,25 @@
 import axios from 'axios';
 
-// Use relative paths by default for cross-device access (mobile, etc.)
-// Only set VITE_API_BASE_URL if you need to point to a different server
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+// Dynamic API URL based on current hostname
+// This allows access from any device on the same network
+const getApiBaseUrl = (): string => {
+    // If VITE_API_BASE_URL is set and not localhost, use it
+    const envUrl = import.meta.env.VITE_API_BASE_URL;
+    if (envUrl && !envUrl.includes('localhost')) {
+        return envUrl;
+    }
+
+    // Otherwise, construct URL using current hostname
+    // This allows mobile devices to connect using the server's IP address
+    const hostname = window.location.hostname;
+    const port = '8000'; // Backend port
+    const url = `http://${hostname}:${port}`;
+    console.log('[API Client] Using API URL:', url, 'hostname:', hostname, 'current port:', window.location.port);
+    return url;
+};
+
+const API_BASE_URL = getApiBaseUrl();
+console.log('[API Client] Final API_BASE_URL:', API_BASE_URL);
 
 export const client = axios.create({
     baseURL: API_BASE_URL,
@@ -26,7 +43,7 @@ export const endpoints = {
         import: '/api/data/import',
     },
     sessions: {
-        list: '/api/sessions',
+        list: '/api/sessions/',
         detail: (id: string) => `/api/sessions/${id}`,
         update: (id: string) => `/api/sessions/${id}`,
         delete: (id: string) => `/api/sessions/${id}`,
