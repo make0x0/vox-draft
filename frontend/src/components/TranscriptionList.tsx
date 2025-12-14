@@ -68,7 +68,7 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
         <section className="flex-1 flex flex-col border-r border-gray-200 bg-white min-w-[300px] h-full overflow-hidden">
             <div className="p-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                 <h2 className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                    <Mic size={16} /> 認識結果リスト
+                    <Mic size={16} /> ブロックリスト
                 </h2>
                 <div className="flex gap-2 items-center">
                     <input type="file" ref={fileInputRef} className="hidden" accept="audio/*,video/*,.m4a,.mp3,.wav" onChange={handleFileUpload} />
@@ -122,8 +122,8 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                                 </div>
                             </div>
                             <textarea
-                                className="w-full text-sm text-gray-800 leading-relaxed outline-none focus:bg-yellow-50 rounded px-2 py-1 -mx-2 resize-y bg-transparent min-h-[3rem] max-h-[50vh]"
-                                rows={Math.min(Math.max(2, block.text.split('\n').length), 20)}
+                                className="w-full text-sm text-gray-800 leading-relaxed outline-none focus:bg-yellow-50 rounded px-2 py-1 -mx-2 resize-y bg-transparent min-h-[4rem]"
+                                rows={Math.min(Math.max(3, block.text.split('\n').length), 10)}
                                 value={block.text}
                                 onChange={(e) => updateLocalBlockText(block.id, e.target.value)}
                                 onBlur={(e) => persistBlockText(block.id, e.target.value)}

@@ -16,9 +16,6 @@ import { SettingsModal } from './components/SettingsModal';
 import { NotificationManager } from './components/NotificationManager';
 import type { TaskStatus } from './components/NotificationManager';
 import type {
-  PromptTemplate,
-  ApiConfig,
-  VocabularyItem,
   EditorRevision
 } from './types';
 
@@ -34,7 +31,7 @@ export default function App() {
   // Settings Data Hook (Persistence)
   const settingsData = useSettingsData();
   // Unwrap for cleaner usage if desired, or pass settingsData directly
-  const { templates, vocabulary, setTemplates: _setTemplates, setVocabulary: _setVocabulary, ...settingsHandlers } = settingsData;
+  const { templates, vocabulary, setTemplates: _setTemplates, setVocabulary: _setVocabulary } = settingsData;
 
   const [editorContent, setEditorContent] = useState<string>("# New Session...");
 
@@ -258,14 +255,7 @@ export default function App() {
     if (!targetSessionId) {
       console.log("No session selected, creating new session...");
       try {
-        const timestamp = new Date().toLocaleString('ja-JP', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        const newSession = await createSession(`Memo ${timestamp}`, "Text Note");
+        const newSession = await createSession("", "Text Note");
         console.log("New session created:", newSession);
         targetSessionId = newSession.id;
         // Select the new session
@@ -345,7 +335,8 @@ export default function App() {
     // User requested checked blocks concatenated in order. 
     // `blocks` is already sorted by backend response (usually creation time or index).
     // If user wants specific drag-order, `blocks` state should reflect that.
-    const targetBlocks = checkedBlocks.length > 0 ? checkedBlocks : blocks;
+    const targetBlocks = (checkedBlocks.length > 0 ? checkedBlocks : blocks)
+      .filter(b => !b.text.startsWith("[Error]") && !b.text.includes("Error:") && !b.text.includes("Failed:"));
 
     if (targetBlocks.length === 0 && !editorContent.trim() && !extraPrompt.trim()) {
       addNotification("error", "コンテキスト（文字起こし、エディタ、またはプロンプト）が空です。");
@@ -594,8 +585,13 @@ export default function App() {
   // ... imports
 
   // Resizing State
-  const [sidebarWidth, setSidebarWidth] = useState(300);
-  const [editorWidth, setEditorWidth] = useState(350);
+  const [sidebarWidth, setSidebarWidth] = useLocalStorage('vox_sidebar_width', 300);
+  const [editorWidth, setEditorWidth] = useLocalStorage('vox_editor_width', 350);
+
+  const handleResetLayout = () => {
+    setSidebarWidth(300);
+    setEditorWidth(350);
+  };
 
   const isDraggingSidebar = useRef(false);
   const isDraggingEditor = useRef(false);
@@ -646,6 +642,7 @@ export default function App() {
         onGenerateTitle={handleGenerateTitle}
         onOpenSettings={() => setShowSettings(true)}
         onNewSession={handleNewSession}
+        onResetLayout={handleResetLayout}
         width={sidebarWidth}
       />
 

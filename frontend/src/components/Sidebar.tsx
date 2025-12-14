@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Book, CheckSquare, Search, Calendar, Trash2, Settings, Edit3, Check, Plus, Sparkles } from 'lucide-react';
+import { Book, CheckSquare, Search, Calendar, Trash2, Settings, Edit3, Check, Plus, Sparkles, RotateCcw } from 'lucide-react';
 import type { HistoryItem } from '../types';
 
 interface SidebarProps {
@@ -12,6 +12,7 @@ interface SidebarProps {
     onGenerateTitle: (id: string) => Promise<string>;
     onOpenSettings: () => void;
     onNewSession: () => void;
+    onResetLayout: () => void;
     width?: number;
 }
 
@@ -23,6 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onGenerateTitle,
     onOpenSettings,
     onNewSession,
+    onResetLayout,
     width = 300
 }) => {
     // ... state ...
@@ -155,8 +157,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                 ))}
             </div>
-            <div className="p-4 border-t border-gray-200">
-                <button onClick={onOpenSettings} className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 w-full p-2 rounded hover:bg-gray-100 transition-colors"><Settings size={16} /><span>設定</span></button>
+            <div className="p-4 border-t border-gray-200 flex gap-2">
+                <button onClick={onOpenSettings} className="flex-1 flex items-center justify-center gap-2 text-sm text-gray-600 hover:text-gray-900 p-2 rounded hover:bg-gray-100 transition-colors bg-white border border-gray-200 shadow-sm"><Settings size={16} /><span>設定</span></button>
+                <button onClick={onResetLayout} className="p-2 text-gray-400 hover:text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-100 shadow-sm" title="レイアウトをリセット">
+                    <RotateCcw size={16} />
+                </button>
             </div>
 
             {showDeleteConfirm && (

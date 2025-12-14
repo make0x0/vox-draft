@@ -34,7 +34,8 @@ def upload_audio_file(
     
     # Ensure session exists or create new
     if not session_id:
-        new_session = SessionModel(title=f"Memo {datetime.now(tz).strftime(settings.DATE_FORMAT)}")
+        today_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M")
+        new_session = SessionModel(title=f"{today_str} MEMO")
         db.add(new_session)
         db.commit()
         db.refresh(new_session)

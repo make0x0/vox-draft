@@ -18,8 +18,15 @@ export const useSessions = () => {
             const data = response.data.map((item: any) => ({
                 id: item.id,
                 summary: item.title || item.summary || 'No Title', // Use title as summary for now
-                // Parse as UTC (append Z if missing) then localize
-                date: new Date(item.created_at + (item.created_at.endsWith('Z') ? '' : 'Z')).toLocaleString(),
+                date: (() => {
+                    const d = new Date(item.created_at + (item.created_at.endsWith('Z') ? '' : 'Z'));
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const h = String(d.getHours()).padStart(2, '0');
+                    const min = String(d.getMinutes()).padStart(2, '0');
+                    return `${y}-${m}-${day} ${h}:${min}`;
+                })(),
                 isoDate: item.created_at.split('T')[0]
             }));
             setSessions(data);
@@ -56,7 +63,15 @@ export const useSessions = () => {
             const newSession = {
                 id: response.data.id,
                 summary: response.data.title || response.data.summary || 'No Title',
-                date: new Date(response.data.created_at).toLocaleString(),
+                date: (() => {
+                    const d = new Date(response.data.created_at);
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const h = String(d.getHours()).padStart(2, '0');
+                    const min = String(d.getMinutes()).padStart(2, '0');
+                    return `${y}-${m}-${day} ${h}:${min}`;
+                })(),
                 isoDate: response.data.created_at.split('T')[0]
             };
             setSessions(prev => [newSession, ...prev]);

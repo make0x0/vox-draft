@@ -56,7 +56,8 @@ from app.core.config import settings
 @router.post("/", response_model=session_schema.Session)
 def create_session(session_in: session_schema.SessionCreate, db: DBSession = Depends(get_db)):
     tz = ZoneInfo(settings.TIMEZONE)
-    default_title = f"Memo {datetime.now(tz).strftime(settings.DATE_FORMAT)}"
+    today_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M")
+    default_title = f"{today_str} MEMO"
     db_session = SessionModel(
         title=session_in.title or default_title,
         summary=session_in.summary or ""

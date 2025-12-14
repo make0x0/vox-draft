@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 from app.core.config import settings
 from app.services.openai_factory import get_openai_client
+from app.services.settings_file import settings_service
 
 router = APIRouter()
 
@@ -108,7 +109,7 @@ async def generate_title(request: TitleGenerationRequest):
         completion = client.chat.completions.create(
             model=model_to_use,
             messages=[
-                {"role": "system", "content": "You are a helpful assistant. Generate a concise title (max 20 characters) for the given text. The title should be in Japanese and summarize the main topic. do not include quotation marks."},
+                {"role": "system", "content": settings_service.get_system_prompt("title_summary") or "You are a helpful assistant. Generate a concise title (max 20 characters) for the given text. The title should be in Japanese and summarize the main topic. do not include quotation marks."},
                 {"role": "user", "content": f"Text: {request.text[:1000]}..."} # Limit input length
             ],
             temperature=0.5,

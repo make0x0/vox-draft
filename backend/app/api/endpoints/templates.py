@@ -1,44 +1,42 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException
 from typing import List
+import uuid
 
-from app.db.base import get_db
-from app.models.settings import PromptTemplate
 from app.schemas.settings import PromptTemplate as PromptTemplateSchema, PromptTemplateCreate, PromptTemplateUpdate
+from app.services.settings_file import settings_service
 
 router = APIRouter()
 
 @router.get("/", response_model=List[PromptTemplateSchema])
-def read_templates(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    templates = db.query(PromptTemplate).offset(skip).limit(limit).all()
-    return templates
+def read_templates(skip: int = 0, limit: int = 100):
+    templates = settings_service.get_templates()
+    # Simple pagination
+    return templates[skip : skip + limit]
 
 @router.post("/", response_model=PromptTemplateSchema)
-def create_template(template: PromptTemplateCreate, db: Session = Depends(get_db)):
-    db_template = PromptTemplate(title=template.title, content=template.content)
-    db.add(db_template)
-    db.commit()
-    db.refresh(db_template)
-    return db_template
+def create_template(template: PromptTemplateCreate):
+    new_template = {
+        "id": str(uuid.uuid4()),
+        "title": template.title,
+        "content": template.content
+    }
+    settings_service.add_template(new_template)
+    return new_template
 
 @router.put("/{template_id}", response_model=PromptTemplateSchema)
-def update_template(template_id: str, template: PromptTemplateUpdate, db: Session = Depends(get_db)):
-    db_template = db.query(PromptTemplate).filter(PromptTemplate.id == template_id).first()
-    if not db_template:
-        raise HTTPException(status_code=404, detail="Template not found")
+def update_template(template_id: str, template: PromptTemplateUpdate):
+    updates = {}
+    if template.title is not None:
+        updates["title"] = template.title
+    if template.content is not None:
+        updates["content"] = template.content
     
-    db_template.title = template.title
-    db_template.content = template.content
-    db.commit()
-    db.refresh(db_template)
-    return db_template
+    updated = settings_service.update_template(template_id, updates)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return updated
 
 @router.delete("/{template_id}")
-def delete_template(template_id: str, db: Session = Depends(get_db)):
-    db_template = db.query(PromptTemplate).filter(PromptTemplate.id == template_id).first()
-    if not db_template:
-        raise HTTPException(status_code=404, detail="Template not found")
-    
-    db.delete(db_template)
-    db.commit()
+def delete_template(template_id: str):
+    settings_service.delete_template(template_id)
     return {"ok": True}
