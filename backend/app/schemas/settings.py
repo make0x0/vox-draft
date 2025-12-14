@@ -14,6 +14,15 @@ class PromptTemplateUpdate(PromptTemplateBase):
     content: Optional[str] = None
     is_system: Optional[bool] = None
 
+class TestConnectionRequest(BaseModel):
+    provider: str
+    openai_api_key: Optional[str] = None
+    azure_openai_api_key: Optional[str] = None
+    azure_openai_endpoint: Optional[str] = None
+    azure_openai_ad_token: Optional[str] = None
+    # For Gemini
+    gemini_api_key: Optional[str] = None
+
 class PromptTemplate(PromptTemplateBase):
     id: str
     class Config:

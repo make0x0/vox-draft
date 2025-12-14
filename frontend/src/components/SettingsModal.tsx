@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Settings, X, Plus, Trash2, Database, Download, Upload, HardDrive, FileArchive } from 'lucide-react';
+import { Settings, X, Plus, Trash2, Database, Download, Upload, HardDrive, FileArchive, Save, RotateCcw, AlertTriangle, FileUp } from 'lucide-react';
+import { client } from '../api/client';
+import { useSettingsData } from '../hooks/useSettingsData';
 import type { PromptTemplate, VocabularyItem, ApiConfig } from '../types';
 
 export interface SettingsModalProps {
@@ -496,7 +498,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 ? `Model: ${(generalSettings as any).stt_gemini_model || "gemini-1.5-flash"}`
                                                 : `Endpoint: ${apiConfig.stt.azure_endpoint || apiConfig.stt.url}`}
                                         </div>
+
+                                        <div className="col-span-2 mt-2 flex justify-end">
+                                            <button
+                                                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300 transition-colors"
+                                                onClick={async () => {
+                                                    const provider = (generalSettings as any).stt_provider || 'openai';
+                                                    try {
+                                                        console.log("Testing STT connection for", provider);
+                                                        await client.post('/api/settings/test', {
+                                                            provider: provider,
+                                                            openai_api_key: (generalSettings as any).openai_api_key,
+                                                            azure_openai_api_key: (generalSettings as any).azure_openai_api_key,
+                                                            azure_openai_endpoint: (generalSettings as any).azure_openai_endpoint,
+                                                            azure_openai_ad_token: (generalSettings as any).azure_openai_ad_token,
+                                                            gemini_api_key: (generalSettings as any).gemini_api_key,
+                                                        });
+                                                        alert("STT 接続テスト成功: " + provider);
+                                                    } catch (e: any) {
+                                                        console.error(e);
+                                                        alert("STT 接続テスト失敗: " + (e.response?.data?.message || e.message));
+                                                    }
+                                                }}
+                                            >
+                                                接続テスト ({((generalSettings as any).stt_provider || 'openai')})
+                                            </button>
+                                        </div>
                                     </div>
+
 
                                     {/* STT Options (Prompts & Vocab) */}
                                     <div className="mt-4 border-t pt-4">
@@ -582,6 +611,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 ? `Model: ${(generalSettings as any).llm_gemini_model || "gemini-1.5-flash"}`
                                                 : `Endpoint: ${apiConfig.llm.azure_deployment || apiConfig.llm.model}`}
                                         </div>
+                                        <div className="col-span-2 mt-2 flex justify-end">
+                                            <button
+                                                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300 transition-colors"
+                                                onClick={async () => {
+                                                    const provider = (generalSettings as any).llm_provider || 'openai';
+                                                    try {
+                                                        // Show loading toast?
+                                                        console.log("Testing connection for", provider);
+                                                        await client.post('/api/settings/test', {
+                                                            provider: provider,
+                                                            openai_api_key: (generalSettings as any).openai_api_key,
+                                                            azure_openai_api_key: (generalSettings as any).azure_openai_api_key,
+                                                            azure_openai_endpoint: (generalSettings as any).azure_openai_endpoint,
+                                                            azure_openai_ad_token: (generalSettings as any).azure_openai_ad_token,
+                                                            gemini_api_key: (generalSettings as any).gemini_api_key,
+                                                        });
+                                                        alert("接続テスト成功: " + provider);
+                                                    } catch (e: any) {
+                                                        console.error(e);
+                                                        alert("接続テスト失敗: " + (e.response?.data?.message || e.message));
+                                                    }
+                                                }}
+                                            >
+                                                接続テスト ({((generalSettings as any).llm_provider || 'openai')})
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -650,6 +705,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             </div>
                                         </div>
                                     </div>
+
                                 </div>
                             </div>
                         )}
@@ -948,6 +1004,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

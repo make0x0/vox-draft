@@ -72,5 +72,6 @@ export const endpoints = {
     },
     settings: {
         list: '/api/settings/',
+        test: '/api/settings/test',
     }
 };
