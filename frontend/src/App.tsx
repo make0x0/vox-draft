@@ -26,7 +26,7 @@ export default function App() {
   const { sessions, fetchSessions, deleteSessions, updateSessionTitle, createSession, restoreSession, emptySessionTrash } = useSessions();
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
-  const { blocks, isLoading: blocksLoading, addBlock, updateBlock, deleteBlock, fetchBlocks, setBlocks, restoreBlock, emptyTrash } = useBlocks();
+  const { blocks, isLoading: blocksLoading, addBlock, updateBlock, deleteBlock, fetchBlocks, setBlocks, restoreBlock, emptyTrash, toggleAllBlocks } = useBlocks();
 
   // Settings Data Hook (Persistence)
   const settingsData = useSettingsData();
@@ -675,6 +675,9 @@ export default function App() {
                   onRestoreBlock={restoreBlock}
                   onEmptyTrash={() => {
                     if (selectedSessionId) emptyTrash(selectedSessionId);
+                  }}
+                  onToggleAllBlocks={(check) => {
+                    if (selectedSessionId) toggleAllBlocks(selectedSessionId, check);
                   }}
                 />
               ) : (

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 
 class TranscriptionBlockBase(BaseModel):
@@ -17,6 +17,10 @@ class TranscriptionBlockCreate(TranscriptionBlockBase):
 class TranscriptionBlockUpdate(BaseModel):
     text: Optional[str] = None
     is_checked: Optional[bool] = None
+
+class TranscriptionBlockBulkUpdate(BaseModel):
+    ids: List[str]
+    update: TranscriptionBlockUpdate
 
 class TranscriptionBlock(TranscriptionBlockBase):
     id: str

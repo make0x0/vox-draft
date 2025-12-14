@@ -127,6 +127,25 @@ export const useBlocks = () => {
         // Implementation depends on backend capabilities
     };
 
+    const toggleAllBlocks = async (sessionId: string, check: boolean) => {
+        if (!sessionId) return;
+        const targetBlocks = blocks.filter(b => !b.isDeleted); // Only affect visible blocks? Or all? User said "blocks list checkboxes". Usually visible.
+        const ids = targetBlocks.map(b => b.id);
+
+        if (ids.length === 0) return;
+
+        try {
+            await client.post(endpoints.sessions.blocks.batchUpdate(sessionId), {
+                ids: ids,
+                update: { is_checked: check }
+            });
+
+            setBlocks(prev => prev.map(b => ids.includes(b.id) ? { ...b, isChecked: check } : b));
+        } catch (error) {
+            console.error('Failed to toggle all blocks:', error);
+        }
+    };
+
     return {
         blocks,
         setBlocks, // Expose setter for optimistic updates if needed
@@ -139,6 +158,7 @@ export const useBlocks = () => {
         deleteBlock,
         restoreBlock,
         emptyTrash,
-        reTranscribeBlock
+        reTranscribeBlock,
+        toggleAllBlocks
     };
 };

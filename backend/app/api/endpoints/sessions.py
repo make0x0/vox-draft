@@ -178,6 +178,28 @@ def update_block(block_id: str, block_in: block_schema.TranscriptionBlockUpdate,
     db.refresh(db_block)
     return db_block
 
+@router.post("/{session_id}/blocks/batch_update")
+def batch_update_blocks(session_id: str, bulk_in: block_schema.TranscriptionBlockBulkUpdate, db: DBSession = Depends(get_db)):
+    """
+    Bulk update blocks (e.g. check/uncheck all).
+    """
+    if not bulk_in.ids:
+         return {"ok": True, "updated_count": 0}
+
+    update_data = bulk_in.update.dict(exclude_unset=True)
+    if not update_data:
+        return {"ok": True, "updated_count": 0}
+    
+    stmt = db.query(BlockModel).filter(
+        BlockModel.id.in_(bulk_in.ids),
+        BlockModel.session_id == session_id
+    )
+    
+    updated_count = stmt.update(update_data, synchronize_session=False)
+    db.commit()
+    
+    return {"ok": True, "updated_count": updated_count}
+
 @router.delete("/blocks/{block_id}")
 def delete_block(block_id: str, db: DBSession = Depends(get_db)):
     """

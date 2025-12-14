@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Mic, Upload, Type, GripVertical, Maximize2, Play, RefreshCw, Trash2, Save, Copy, RotateCcw } from 'lucide-react';
+import { Mic, Upload, Type, GripVertical, Maximize2, Play, RefreshCw, Trash2, Save, Copy, RotateCcw, CheckSquare, Square } from 'lucide-react';
 import type { TranscriptionBlock } from '../types';
 
 interface TranscriptionListProps {
@@ -13,6 +13,7 @@ interface TranscriptionListProps {
     onCheckBlock: (id: string, isChecked: boolean) => void;
     onRestoreBlock: (id: string) => void;
     onEmptyTrash: () => void;
+    onToggleAllBlocks: (check: boolean) => void;
 }
 
 export const TranscriptionList: React.FC<TranscriptionListProps> = ({
@@ -25,7 +26,8 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
     onUpdateBlock,
     onCheckBlock,
     onRestoreBlock,
-    onEmptyTrash
+    onEmptyTrash,
+    onToggleAllBlocks
 }) => {
     const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
     const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
@@ -101,43 +103,64 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
 
     return (
         <section className="flex-1 flex flex-col border-r border-gray-200 bg-white min-w-[300px] h-full overflow-hidden">
-            <div className="p-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                <h2 className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                    <Mic size={16} /> {showTrash ? "ゴミ箱" : "ブロックリスト"}
-                </h2>
-                <div className="flex gap-2 items-center">
-                    {!showTrash ? (
-                        <>
-                            <input type="file" ref={fileInputRef} className="hidden" accept="audio/*,video/*,.m4a,.mp3,.wav" onChange={handleFileUpload} />
-                            <button onClick={() => fileInputRef.current?.click()} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-blue-50 text-blue-600 flex items-center gap-1 shadow-sm" title="音声ファイルをアップロード">
-                                <Upload size={12} /> 音声
+            <div className="p-3 border-b border-gray-200 bg-gray-50 flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-sm font-bold text-gray-600 flex items-center gap-2">
+                        <Mic size={16} /> {showTrash ? "ゴミ箱" : "ブロックリスト"}
+                    </h2>
+                    <div className="flex gap-2 items-center">
+                        {!showTrash ? (
+                            <>
+                                <input type="file" ref={fileInputRef} className="hidden" accept="audio/*,video/*,.m4a,.mp3,.wav" onChange={handleFileUpload} />
+                                <button onClick={() => fileInputRef.current?.click()} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-blue-50 text-blue-600 flex items-center gap-1 shadow-sm" title="音声ファイルをアップロード">
+                                    <Upload size={12} /> 音声
+                                </button>
+                                <button onClick={onAddTextBlock} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-blue-50 text-blue-600 flex items-center gap-1 shadow-sm" title="テキストブロックを追加">
+                                    <Type size={12} /> テキスト
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                onClick={() => {
+                                    if (confirm("ゴミ箱を空にしますか？この操作は取り消せません。")) {
+                                        onEmptyTrash();
+                                    }
+                                }}
+                                className="text-xs bg-red-50 border border-red-200 px-2 py-1 rounded hover:bg-red-100 text-red-600 flex items-center gap-1 shadow-sm font-bold"
+                                disabled={trashCount === 0}
+                            >
+                                <Trash2 size={12} /> ゴミ箱を空にする
                             </button>
-                            <button onClick={onAddTextBlock} className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-blue-50 text-blue-600 flex items-center gap-1 shadow-sm" title="テキストブロックを追加">
-                                <Type size={12} /> テキスト
-                            </button>
-                        </>
-                    ) : (
-                        <button
-                            onClick={() => {
-                                if (confirm("ゴミ箱を空にしますか？この操作は取り消せません。")) {
-                                    onEmptyTrash();
-                                }
-                            }}
-                            className="text-xs bg-red-50 border border-red-200 px-2 py-1 rounded hover:bg-red-100 text-red-600 flex items-center gap-1 shadow-sm font-bold"
-                            disabled={trashCount === 0}
-                        >
-                            <Trash2 size={12} /> ゴミ箱を空にする
-                        </button>
-                    )}
+                        )}
 
-                    <button
-                        onClick={() => setShowTrash(!showTrash)}
-                        className={`text-xs border px-2 py-1 rounded flex items-center gap-1 shadow-sm transition-colors ${showTrash ? 'bg-gray-200 border-gray-300 text-gray-700' : 'bg-white border-gray-300 text-gray-500 hover:text-gray-700'}`}
-                        title={showTrash ? "リストに戻る" : "ゴミ箱を表示"}
-                    >
-                        {showTrash ? "戻る" : <><Trash2 size={12} /> ({trashCount})</>}
-                    </button>
+                        <button
+                            onClick={() => setShowTrash(!showTrash)}
+                            className={`text-xs border px-2 py-1 rounded flex items-center gap-1 shadow-sm transition-colors ${showTrash ? 'bg-gray-200 border-gray-300 text-gray-700' : 'bg-white border-gray-300 text-gray-500 hover:text-gray-700'}`}
+                            title={showTrash ? "リストに戻る" : "ゴミ箱を表示"}
+                        >
+                            {showTrash ? "戻る" : <><Trash2 size={12} /> ({trashCount})</>}                        </button>
+                    </div>
                 </div>
+
+                {!showTrash && displayBlocks.length > 0 && (
+                    <div className="flex gap-2 items-center">
+                        <span className="text-xs text-gray-500">一括操作:</span>
+                        <button
+                            onClick={() => onToggleAllBlocks(true)}
+                            className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-green-50 text-green-600 flex items-center gap-1 shadow-sm"
+                            title="全て選択"
+                        >
+                            <CheckSquare size={12} /> 全選択
+                        </button>
+                        <button
+                            onClick={() => onToggleAllBlocks(false)}
+                            className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-orange-50 text-orange-600 flex items-center gap-1 shadow-sm"
+                            title="全て解除"
+                        >
+                            <Square size={12} /> 全解除
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/50">
