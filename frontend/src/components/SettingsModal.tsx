@@ -473,7 +473,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {/* --- API Tab --- */}
                         {settingsTab === 'api' && (
                             <div className="space-y-6">
-                                <div className="bg-blue-50 border border-blue-200 p-3 rounded text-sm text-blue-800 mb-4"><span className="font-bold">Info:</span> これらの設定はバックエンドの `config.yaml` で管理されています。</div>
+                                <div className="bg-blue-50 border border-blue-200 p-3 rounded text-sm text-blue-800 mb-4"><span className="font-bold">Info:</span> これらの設定は `data/settings.yaml` で管理されています。APIキーは暗号化して保存されます。</div>
 
                                 {/* STT Config */}
                                 <h4 className="text-md font-bold text-gray-900 border-b pb-2 mb-4">音声認識 API (STT)</h4>

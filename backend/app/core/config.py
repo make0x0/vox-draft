@@ -81,15 +81,11 @@ def load_credentials():
         settings.AZURE_OPENAI_ENDPOINT = str(general.get("azure_openai_endpoint", "") or "")
         settings.GEMINI_API_KEY = _decrypt_value(str(general.get("gemini_api_key", "") or ""))
         
-        # Load provider settings from general (these override config.yaml)
-        if general.get("stt_provider"):
-            settings.STT_PROVIDER = general.get("stt_provider")
-        if general.get("stt_gemini_model"):
-            settings.STT_GEMINI_MODEL = general.get("stt_gemini_model")
-        if general.get("llm_provider"):
-            settings.LLM_PROVIDER = general.get("llm_provider")
-        if general.get("llm_gemini_model"):
-            settings.LLM_GEMINI_MODEL = general.get("llm_gemini_model")
+        # Load provider/model settings (settings.yaml is the single source of truth)
+        settings.STT_PROVIDER = general.get("stt_provider", "openai")
+        settings.STT_GEMINI_MODEL = general.get("stt_gemini_model", "gemini-1.5-flash")
+        settings.LLM_PROVIDER = general.get("llm_provider", "openai")
+        settings.LLM_GEMINI_MODEL = general.get("llm_gemini_model", "gemini-1.5-flash")
             
         print(f"[Config] Loaded credentials from settings.yaml")
         
@@ -109,23 +105,16 @@ def load_config():
 
             settings.ALLOWED_ORIGINS = system.get("server", {}).get("allowed_origins", ["*"])
             
+            # STT settings (provider is loaded from settings.yaml)
             settings.STT_API_URL = stt.get("openai_api_url", "")
-            settings.STT_PROVIDER = stt.get("provider", "openai")
-            settings.STT_GEMINI_MODEL = stt.get("gemini_model", "gemini-2.5-flash")
-            settings.STT_AZURE_DEPLOYMENT = stt.get("azure_deployment", "whisper")
-            settings.STT_AZURE_API_VERSION = stt.get("azure_api_version", "2024-06-01")
             settings.STT_AZURE_ENDPOINT = stt.get("azure_endpoint", "")
             settings.STT_AZURE_ENDPOINT_RAW = settings.STT_AZURE_ENDPOINT
             settings.STT_TIMEOUT = float(stt.get("timeout", 60.0))
             settings.STT_MAX_RETRIES = int(stt.get("max_retries", 3))
             _parse_azure_config(settings, "STT", settings.STT_AZURE_ENDPOINT)
 
+            # LLM settings (provider is loaded from settings.yaml)
             settings.LLM_API_URL = llm.get("openai_api_url", "")
-            settings.LLM_PROVIDER = llm.get("provider", "openai")
-            settings.LLM_MODEL = llm.get("model", "gpt-4o")
-            settings.LLM_GEMINI_MODEL = llm.get("gemini_model", "gemini-2.5-flash")
-            settings.LLM_AZURE_DEPLOYMENT = llm.get("azure_deployment", "gpt-4o")
-            settings.LLM_AZURE_API_VERSION = llm.get("azure_api_version", "2024-06-01")
             settings.LLM_AZURE_ENDPOINT = llm.get("azure_endpoint", "")
             settings.LLM_AZURE_ENDPOINT_RAW = settings.LLM_AZURE_ENDPOINT
             settings.LLM_TIMEOUT = float(llm.get("timeout", 60.0))
