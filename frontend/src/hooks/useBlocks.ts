@@ -36,7 +36,8 @@ export const useBlocks = () => {
                 isChecked: b.is_checked,
                 duration: b.duration,
                 fileName: b.file_name,
-                isDeleted: b.is_deleted
+                isDeleted: b.is_deleted,
+                color: b.color
             }));
             setBlocks(fetchedBlocks);
         } catch (err) {
@@ -84,6 +85,7 @@ export const useBlocks = () => {
             const payload: any = {};
             if (updates.text !== undefined) payload.text = updates.text;
             if (updates.isChecked !== undefined) payload.is_checked = updates.isChecked;
+            if (updates.color !== undefined) payload.color = updates.color;
 
             await client.patch(endpoints.sessions.blocks.update(blockId), payload);
             setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, ...updates } : b));

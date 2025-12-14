@@ -10,6 +10,7 @@ class TranscriptionBlockBase(BaseModel):
     duration: Optional[str] = None
     file_name: Optional[str] = None
     timestamp: Optional[str] = None # Added for JST display string
+    color: Optional[str] = None  # Block color for visual distinction
 
 class TranscriptionBlockCreate(TranscriptionBlockBase):
     session_id: str
@@ -17,6 +18,7 @@ class TranscriptionBlockCreate(TranscriptionBlockBase):
 class TranscriptionBlockUpdate(BaseModel):
     text: Optional[str] = None
     is_checked: Optional[bool] = None
+    color: Optional[str] = None
 
 class TranscriptionBlockBulkUpdate(BaseModel):
     ids: List[str]
@@ -28,6 +30,7 @@ class TranscriptionBlock(TranscriptionBlockBase):
     created_at: datetime
     timestamp: Optional[str] = None
     is_deleted: bool = False
+    color: Optional[str] = None
 
 
     class Config:

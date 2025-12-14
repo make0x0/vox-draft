@@ -173,6 +173,8 @@ def update_block(block_id: str, block_in: block_schema.TranscriptionBlockUpdate,
         db_block.text = block_in.text
     if block_in.is_checked is not None:
         db_block.is_checked = block_in.is_checked
+    if block_in.color is not None:
+        db_block.color = block_in.color
         
     db.commit()
     db.refresh(db_block)

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Mic, Upload, Type, GripVertical, Maximize2, Play, RefreshCw, Trash2, Save, Copy, RotateCcw, CheckSquare, Square } from 'lucide-react';
+import { Mic, Upload, Type, GripVertical, Maximize2, Play, RefreshCw, Trash2, Save, Copy, RotateCcw, CheckSquare, Square, Palette } from 'lucide-react';
 import type { TranscriptionBlock } from '../types';
 
 interface TranscriptionListProps {
@@ -14,7 +14,21 @@ interface TranscriptionListProps {
     onRestoreBlock: (id: string) => void;
     onEmptyTrash: () => void;
     onToggleAllBlocks: (check: boolean) => void;
+    onColorChange: (id: string, color: string | null) => void;
 }
+
+// Pastel colors for blocks (8 options)
+const BLOCK_COLORS = [
+    { name: 'なし', value: null, bg: 'bg-white', border: 'border-gray-200' },
+    { name: '黄色', value: 'yellow', bg: 'bg-yellow-50', border: 'border-yellow-200' },
+    { name: '青', value: 'blue', bg: 'bg-blue-50', border: 'border-blue-200' },
+    { name: '緑', value: 'green', bg: 'bg-green-50', border: 'border-green-200' },
+    { name: 'ピンク', value: 'pink', bg: 'bg-pink-50', border: 'border-pink-200' },
+    { name: '紫', value: 'purple', bg: 'bg-purple-50', border: 'border-purple-200' },
+    { name: 'オレンジ', value: 'orange', bg: 'bg-orange-50', border: 'border-orange-200' },
+    { name: '水色', value: 'cyan', bg: 'bg-cyan-50', border: 'border-cyan-200' },
+    { name: 'グレー', value: 'gray', bg: 'bg-gray-100', border: 'border-gray-300' },
+];
 
 export const TranscriptionList: React.FC<TranscriptionListProps> = ({
     blocks,
@@ -27,13 +41,15 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
     onCheckBlock,
     onRestoreBlock,
     onEmptyTrash,
-    onToggleAllBlocks
+    onToggleAllBlocks,
+    onColorChange
 }) => {
     const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
     const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
     const [draggedBlockHeight, setDraggedBlockHeight] = useState<number | null>(null);
     const [showTrash, setShowTrash] = useState(false);
+    const [colorPickerBlockId, setColorPickerBlockId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const toggleBlockCheck = (id: string, currentChecked: boolean) => {
@@ -201,10 +217,19 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                                 onDragEnter={() => handleDragEnter(index)}
                                 onDragEnd={handleDragEnd}
                                 onDrop={() => handleDrop(index)}
-                                className={`bg-white p-3 rounded-lg shadow-sm border transition-all flex gap-3 group relative
-                                    ${block.isChecked ? 'border-blue-400 ring-1 ring-blue-100' : 'border-gray-200'}
+                                className={`p-3 rounded-lg shadow-sm border transition-all flex gap-3 group relative
+                                    ${block.isChecked ? 'ring-1 ring-blue-100' : ''}
                                     ${isDragged ? 'opacity-40 scale-95' : 'opacity-100'}
                                     ${isProcessing ? 'bg-blue-50/50' : ''}
+                                    ${block.color === 'yellow' ? 'bg-yellow-50 border-yellow-200' : ''}
+                                    ${block.color === 'blue' ? 'bg-blue-50 border-blue-200' : ''}
+                                    ${block.color === 'green' ? 'bg-green-50 border-green-200' : ''}
+                                    ${block.color === 'pink' ? 'bg-pink-50 border-pink-200' : ''}
+                                    ${block.color === 'purple' ? 'bg-purple-50 border-purple-200' : ''}
+                                    ${block.color === 'orange' ? 'bg-orange-50 border-orange-200' : ''}
+                                    ${block.color === 'cyan' ? 'bg-cyan-50 border-cyan-200' : ''}
+                                    ${block.color === 'gray' ? 'bg-gray-100 border-gray-300' : ''}
+                                    ${!block.color ? 'bg-white border-gray-200' : ''}
                                 `}
                             >
                                 <div className="flex flex-col items-center justify-center cursor-grab text-gray-300 hover:text-gray-500 pt-1">
@@ -241,6 +266,32 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                                                     >
                                                         <Copy size={14} />
                                                     </button>
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={() => setColorPickerBlockId(colorPickerBlockId === block.id ? null : block.id)}
+                                                            className="p-1 text-gray-400 hover:text-purple-600 rounded hover:bg-purple-50"
+                                                            title="色を変更"
+                                                        >
+                                                            <Palette size={14} />
+                                                        </button>
+                                                        {colorPickerBlockId === block.id && (
+                                                            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 min-w-[120px]">
+                                                                <div className="grid grid-cols-3 gap-1">
+                                                                    {BLOCK_COLORS.map((c) => (
+                                                                        <button
+                                                                            key={c.value || 'none'}
+                                                                            onClick={() => {
+                                                                                onColorChange(block.id, c.value);
+                                                                                setColorPickerBlockId(null);
+                                                                            }}
+                                                                            className={`w-8 h-8 rounded border-2 ${c.bg} ${c.border} hover:scale-110 transition-transform ${block.color === c.value ? 'ring-2 ring-blue-400' : ''}`}
+                                                                            title={c.name}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                     <button onClick={() => onDeleteBlock(block.id)} className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-red-50" title="削除"><Trash2 size={14} /></button>
                                                 </>
                                             )}

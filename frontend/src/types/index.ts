@@ -8,6 +8,7 @@ export interface TranscriptionBlock {
     fileName?: string;
     filePath?: string; // Added for backend integration
     isDeleted?: boolean;
+    color?: string;  // Block color for visual distinction
 }
 
 export interface HistoryItem {

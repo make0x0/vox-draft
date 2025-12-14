@@ -16,6 +16,7 @@ class TranscriptionBlock(Base):
     duration = Column(String, nullable=True)
     is_checked = Column(Boolean, default=True)
     is_deleted = Column(Boolean, default=False)
+    color = Column(String, nullable=True, default=None)  # e.g. 'yellow', 'blue', etc.
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Establish relationship if needed, for cascading deletes etc.

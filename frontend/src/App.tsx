@@ -676,8 +676,11 @@ export default function App() {
                   onEmptyTrash={() => {
                     if (selectedSessionId) emptyTrash(selectedSessionId);
                   }}
-                  onToggleAllBlocks={(check) => {
+                  onToggleAllBlocks={(check: boolean) => {
                     if (selectedSessionId) toggleAllBlocks(selectedSessionId, check);
+                  }}
+                  onColorChange={(id: string, color: string | null) => {
+                    updateBlock(id, { color: color || undefined });
                   }}
                 />
               ) : (
