@@ -4,8 +4,6 @@ import type { HistoryItem } from '../types';
 
 interface SidebarProps {
     history: HistoryItem[];
-    // setHistory: React.Dispatch<React.SetStateAction<HistoryItem[]>>; 
-    // In real app, we might emit events or use a store provided via props/context
     onSelectSession: (id: string) => void;
     onDeleteSessions: (ids: string[]) => void;
     onUpdateSessionTitle: (id: string, newTitle: string) => void;
@@ -27,7 +25,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onResetLayout,
     width = 300
 }) => {
-    // ... state ...
     const [searchQuery, setSearchQuery] = useState("");
     const [searchDateFrom, setSearchDateFrom] = useState("");
     const [searchDateTo, setSearchDateTo] = useState("");
@@ -44,7 +41,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         setSelectedHistoryIds(newSet);
     };
 
+    const selectAll = () => {
+        // Select all displayed history items
+        setSelectedHistoryIds(new Set(displayedHistory.map(h => h.id)));
+    };
+
     const handleBulkDelete = () => { if (selectedHistoryIds.size > 0) setShowDeleteConfirm(true); };
+
+    // Explicit Delete All History Button Handler
+    const handleDeleteAllHistory = () => {
+        // Select ALL history (not just displayed/filtered)
+        setSelectedHistoryIds(new Set(history.map(h => h.id)));
+        setShowDeleteConfirm(true);
+    };
 
     const confirmBulkDelete = () => {
         onDeleteSessions(Array.from(selectedHistoryIds));
@@ -85,11 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="p-3 border-b border-gray-200 bg-gray-50 flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                     <h2 className="text-sm font-bold text-gray-600 flex items-center gap-2"><Book size={16} /> 履歴</h2>
-                    <div className="flex gap-1">
-                        <button onClick={() => setIsSelectionMode(!isSelectionMode)} className={`p-1.5 rounded text-xs flex items-center gap-1 ${isSelectionMode ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-200'}`}>
-                            <CheckSquare size={16} /> {isSelectionMode && <span className="font-bold">完了</span>}
-                        </button>
-                    </div>
+                    {/* Toggle Moved from here */}
                 </div>
 
                 <button
@@ -109,13 +114,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <div className="flex items-center gap-1"><input type="date" value={searchDateFrom} onChange={(e) => setSearchDateFrom(e.target.value)} className="border rounded px-1 py-1 w-full" /><span className="text-gray-400">~</span><input type="date" value={searchDateTo} onChange={(e) => setSearchDateTo(e.target.value)} className="border rounded px-1 py-1 w-full" /></div>
                     </div>
                 )}
-                {isSelectionMode && selectedHistoryIds.size > 0 && (
-                    <div className="bg-red-50 border border-red-100 rounded p-2 flex justify-between items-center"><span className="text-xs text-red-700 font-bold">{selectedHistoryIds.size}件 選択中</span><button onClick={handleBulkDelete} className="text-xs bg-white border border-red-200 text-red-600 px-2 py-1 rounded hover:bg-red-100 flex items-center gap-1"><Trash2 size={12} /> 一括削除</button></div>
+
+                {/* Selection Toggle & Tools Row */}
+                <div className="flex justify-between items-center mt-1">
+                    <button onClick={() => setIsSelectionMode(!isSelectionMode)} className={`p-1.5 rounded text-xs flex items-center gap-1 border ${isSelectionMode ? 'bg-blue-100 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-100'}`}>
+                        <CheckSquare size={14} /> {isSelectionMode ? '選択モード終了' : '選択モード'}
+                    </button>
+                    {isSelectionMode && (
+                        <button onClick={handleDeleteAllHistory} className="text-xs text-red-600 hover:text-red-800 hover:underline flex items-center gap-1">
+                            <Trash2 size={12} /> 全履歴削除
+                        </button>
+                    )}
+                </div>
+
+                {isSelectionMode && (
+                    <div className="bg-blue-50 border border-blue-100 rounded p-2 flex justify-between items-center gap-2">
+                        <div className="flex gap-2 items-center">
+                            <span className="text-xs text-blue-800 font-bold">{selectedHistoryIds.size}件</span>
+                            <button onClick={selectAll} className="text-[10px] bg-white border border-blue-200 text-blue-600 px-2 py-0.5 rounded hover:bg-blue-100">全選択(表示中)</button>
+                        </div>
+                        <button onClick={handleBulkDelete} disabled={selectedHistoryIds.size === 0} className="text-xs bg-white border border-red-200 text-red-600 px-2 py-1 rounded hover:bg-red-100 flex items-center gap-1 disabled:opacity-50"><Trash2 size={12} /> 削除</button>
+                    </div>
                 )}
             </div>
+
             <div className="flex-1 overflow-y-auto">
                 {displayedHistory.length === 0 ? <div className="p-8 text-center text-gray-400 text-sm">履歴が見つかりません</div> : displayedHistory.map(item => (
-                    <div key={item.id} className={`p-3 border-b border-gray-100 transition-colors group relative ${isSelectionMode ? 'hover:bg-gray-50' : 'hover:bg-blue-50 cursor-pointer'}`}>
+                    <div key={item.id} className={`p-3 border-b border-gray-100 transition-colors group relative ${isSelectionMode ? 'hover:bg-gray-50' : selectedHistoryIds.has(item.id) ? 'bg-blue-50' : 'hover:bg-blue-50 cursor-pointer'}`}>
                         <div className="flex gap-2">
                             {isSelectionMode && <div className="pt-1"><input type="checkbox" checked={selectedHistoryIds.has(item.id)} onChange={() => toggleHistorySelection(item.id)} className="w-4 h-4 text-blue-600 rounded cursor-pointer" /></div>}
                             <div className="flex-1 min-w-0" onClick={() => !isSelectionMode && !editingTitleId && onSelectSession(item.id)}>
@@ -128,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                             onChange={(e) => setTempTitle(e.target.value)}
                                             className="w-full text-sm border border-blue-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                             autoFocus
-                                            onBlur={saveTitle} // Keep simple blur save
+                                            onBlur={saveTitle}
                                             onKeyDown={(e) => e.key === 'Enter' && saveTitle()}
                                         />
                                         <button onClick={saveTitle} className="text-green-600 p-1 hover:bg-green-50 rounded"><Check size={14} /></button>
@@ -157,10 +182,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                 ))}
             </div>
-            <div className="p-4 border-t border-gray-200 flex gap-2">
-                <button onClick={onOpenSettings} className="flex-1 flex items-center justify-center gap-2 text-sm text-gray-600 hover:text-gray-900 p-2 rounded hover:bg-gray-100 transition-colors bg-white border border-gray-200 shadow-sm"><Settings size={16} /><span>設定</span></button>
-                <button onClick={onResetLayout} className="p-2 text-gray-400 hover:text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-100 shadow-sm" title="画面のレイアウトがリセットされます">
-                    <RotateCcw size={16} />
+            <div className="p-2 border-t border-gray-200 flex gap-2">
+                <button onClick={onOpenSettings} className="flex-1 flex items-center justify-center gap-1 text-xs text-gray-600 hover:text-gray-900 p-1.5 rounded hover:bg-gray-100 transition-colors bg-white border border-gray-200 shadow-sm"><Settings size={14} /><span>設定</span></button>
+                <button onClick={onResetLayout} className="p-1.5 text-gray-400 hover:text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-100 shadow-sm" title="画面のレイアウトがリセットされます">
+                    <RotateCcw size={14} />
                 </button>
             </div>
 
