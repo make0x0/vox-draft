@@ -1,5 +1,16 @@
 # VoxDraft - AI Voice Drafting Tool
 
+> [!IMPORTANT]
+> **To AI Agents & Developers:**
+> Before starting any development task, YOU MUST READ and FOLLOW the development guidelines defined in:
+>
+> 📜 **[docs/DEVELOPMENT_POLICY.md](docs/DEVELOPMENT_POLICY.md)**
+>
+> This policy enforces:
+> 1.  Mandatory creation of reproduction scripts/tests BEFORE implementation.
+> 2.  Strict verification flow.
+> 3.  Referencing project context.
+
 音声入力、自動文字起こし、AIによる文章生成を統合したドラフティングツールです。
 会議の議事録作成、メールの下書き、アイデアのブレインストーミングなどを効率化します。
 
