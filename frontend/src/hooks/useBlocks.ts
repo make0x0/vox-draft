@@ -28,8 +28,11 @@ export const useBlocks = () => {
                 id: b.id,
                 type: b.type,
                 text: b.text || '',
-                // Use backend provided timestamp (JST string) or fallback to parsing created_at as UTC
-                timestamp: b.timestamp || new Date(b.created_at + (b.created_at.endsWith('Z') ? '' : 'Z')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                // Force reformatting on frontend to ensure YYYY/MM/DD is displayed
+                timestamp: (() => {
+                    const d = new Date(b.created_at + (b.created_at.endsWith('Z') ? '' : 'Z'));
+                    return `${d.getFullYear()}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+                })(),
                 isChecked: b.is_checked,
                 duration: b.duration,
                 fileName: b.file_name,

@@ -29,6 +29,8 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
 }) => {
     const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
     const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
+    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+    const [draggedBlockHeight, setDraggedBlockHeight] = useState<number | null>(null);
     const [showTrash, setShowTrash] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,11 +54,25 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
         }
     };
 
-    const handleDragStart = (index: number) => setDraggedBlockIndex(index);
-    const handleDragOver = (e: React.DragEvent) => e.preventDefault();
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+        setDraggedBlockIndex(index);
+        setDraggedBlockHeight(e.currentTarget.offsetHeight);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        // Crucial for allowing drop
+    };
+    const handleDragEnter = (index: number) => {
+        if (draggedBlockIndex !== null && draggedBlockIndex !== index) {
+            setDragOverIndex(index);
+        }
+    };
     const handleDrop = (index: number) => {
         if (draggedBlockIndex === null || draggedBlockIndex === index) {
             setDraggedBlockIndex(null);
+            setDragOverIndex(null);
+            setDraggedBlockHeight(null);
             return;
         }
         const newBlocks = [...blocks];
@@ -65,6 +81,13 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
         newBlocks.splice(index, 0, draggedBlock);
         setBlocks(newBlocks);
         setDraggedBlockIndex(null);
+        setDragOverIndex(null);
+        setDraggedBlockHeight(null);
+    };
+    const handleDragEnd = () => {
+        setDraggedBlockIndex(null);
+        setDragOverIndex(null);
+        setDraggedBlockHeight(null);
     };
 
     const expandedBlock = blocks.find(b => b.id === expandedBlockId);
@@ -130,35 +153,52 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
 
                     const isReadOnly = isProcessing || showTrash;
 
+                    // DnD Placeholder Logic
+                    const isDragged = draggedBlockIndex === index;
+                    const isDropTarget = dragOverIndex === index && !isDragged;
+
                     return (
-                        <div
-                            key={block.id}
-                            draggable
-                            onDragStart={() => handleDragStart(index)}
-                            onDragOver={handleDragOver}
-                            onDrop={() => handleDrop(index)}
-                            className={`bg-white p-3 rounded-lg shadow-sm border transition-all flex gap-3 group relative 
-                                ${block.isChecked ? 'border-blue-400 ring-1 ring-blue-100' : 'border-gray-200'}
-                                ${draggedBlockIndex === index ? 'opacity-50' : 'opacity-100'}
-                                ${isProcessing ? 'bg-blue-50/50' : ''}
-                            `}
-                        >
-                            <div className="flex flex-col items-center justify-center cursor-grab text-gray-300 hover:text-gray-500 pt-1">
-                                <GripVertical size={16} />
-                            </div>
-                            <div className="pt-1">
-                                <input type="checkbox" checked={block.isChecked} onChange={() => toggleBlockCheck(block.id, block.isChecked)} className="w-4 h-4 text-blue-600 rounded cursor-pointer" />
-                            </div>
-                            <div className="flex-1 min-w-0 flex flex-col relative">
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <div className="flex items-center gap-2">
-                                        {block.type === 'audio' ? <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 rounded font-mono">AUDIO</span> : <span className="bg-green-100 text-green-700 text-[10px] px-1.5 rounded font-mono">TEXT</span>}
-                                        <span className="text-xs text-gray-400 font-mono">{block.timestamp} {block.duration && `(${block.duration})`}</span>
-                                        {block.fileName && <span className="text-[10px] text-gray-400 truncate max-w-[150px] border border-gray-200 rounded px-2" title={block.fileName}>File: {block.fileName}</span>}
-                                    </div>
-                                    <div className="flex gap-1">
-                                        <button onClick={() => setExpandedBlockId(block.id)} className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="拡大して編集"><Maximize2 size={14} /></button>
+                        <React.Fragment key={block.id}>
+                            {/* Visual Placeholder when dragging over an item */}
+                            {draggedBlockIndex !== null && isDropTarget && (
+                                <div
+                                    className="bg-gray-200 border-2 border-dashed border-gray-400 rounded-lg mx-1 animate-pulse flex items-center justify-center text-gray-400 font-bold mb-3 transition-all duration-200"
+                                    style={{ height: draggedBlockHeight ? `${draggedBlockHeight}px` : '48px' }}
+                                    onDragOver={handleDragOver}
+                                    onDrop={() => handleDrop(index)}
+                                >
+                                    Drop Here
+                                </div>
+                            )}
+
+                            <div
+                                draggable={!showTrash}
+                                onDragStart={(e) => handleDragStart(e, index)}
+                                onDragOver={handleDragOver}
+                                onDragEnter={() => handleDragEnter(index)}
+                                onDragEnd={handleDragEnd}
+                                onDrop={() => handleDrop(index)}
+                                className={`bg-white p-3 rounded-lg shadow-sm border transition-all flex gap-3 group relative
+                                    ${block.isChecked ? 'border-blue-400 ring-1 ring-blue-100' : 'border-gray-200'}
+                                    ${isDragged ? 'opacity-40 scale-95' : 'opacity-100'}
+                                    ${isProcessing ? 'bg-blue-50/50' : ''}
+                                `}
+                            >
+                                <div className="flex flex-col items-center justify-center cursor-grab text-gray-300 hover:text-gray-500 pt-1">
+                                    <GripVertical size={16} />
+                                </div>
+                                <div className="pt-1">
+                                    <input type="checkbox" checked={block.isChecked} onChange={() => toggleBlockCheck(block.id, block.isChecked)} className="w-4 h-4 text-blue-600 rounded cursor-pointer" />
+                                </div>
+                                <div className="flex-1 min-w-0 flex flex-col relative">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <div className="flex items-center gap-2">
+                                            {block.type === 'audio' ? <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 rounded font-mono">AUDIO</span> : <span className="bg-green-100 text-green-700 text-[10px] px-1.5 rounded font-mono">TEXT</span>}
+                                            <span className="text-xs text-gray-400 font-mono">{block.timestamp} {block.duration && `(${block.duration})`}</span>
+                                            {block.fileName && <span className="text-[10px] text-gray-400 truncate max-w-[150px] border border-gray-200 rounded px-2" title={block.fileName}>File: {block.fileName}</span>}
+                                        </div>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => setExpandedBlockId(block.id)} className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="拡大して編集"><Maximize2 size={14} /></button>
                                             {showTrash ? (
                                                 <button onClick={() => onRestoreBlock(block.id)} className="p-1 text-gray-400 hover:text-green-600 rounded hover:bg-green-50" title="元に戻す"><RotateCcw size={14} /></button>
                                             ) : (
@@ -183,35 +223,35 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* Status Overlay / Banner */}
+                                    {isProcessing && (
+                                        <div className="mb-2 bg-blue-100 border border-blue-200 text-blue-800 text-xs px-2 py-1.5 rounded-md flex items-center gap-2 animate-pulse">
+                                            <RefreshCw size={12} className="animate-spin" />
+                                            <span className="font-bold">処理中:</span> {block.text.replace(/^\(|\)$/g, '')}
+                                        </div>
+                                    )}
+                                    {isError && (
+                                        <div className="mb-2 bg-red-50 border border-red-200 text-red-800 text-xs px-2 py-1.5 rounded-md">
+                                            <span className="font-bold">エラー:</span> {block.text}
+                                        </div>
+                                    )}
+
+                                    <textarea
+                                        className={`w-full text-sm text-gray-800 leading-relaxed outline-none focus:bg-yellow-50 rounded px-2 py-1 -mx-2 resize-y bg-transparent min-h-[4rem]
+                                            ${isProcessing ? 'opacity-50 cursor-not-allowed select-none' : ''}
+                                            ${isError ? 'text-red-600' : ''}
+                                        `}
+                                        rows={Math.min(Math.max(3, block.text.split('\n').length), 10)}
+                                        value={block.text}
+                                        onChange={(e) => updateLocalBlockText(block.id, e.target.value)}
+                                        onBlur={(e) => persistBlockText(block.id, e.target.value)}
+                                        disabled={isReadOnly}
+                                        readOnly={isReadOnly}
+                                    />
                                 </div>
-
-                                {/* Status Overlay / Banner */}
-                                {isProcessing && (
-                                    <div className="mb-2 bg-blue-100 border border-blue-200 text-blue-800 text-xs px-2 py-1.5 rounded-md flex items-center gap-2 animate-pulse">
-                                        <RefreshCw size={12} className="animate-spin" />
-                                        <span className="font-bold">処理中:</span> {block.text.replace(/^\(|\)$/g, '')}
-                                    </div>
-                                )}
-                                {isError && (
-                                    <div className="mb-2 bg-red-50 border border-red-200 text-red-800 text-xs px-2 py-1.5 rounded-md">
-                                        <span className="font-bold">エラー:</span> {block.text}
-                                    </div>
-                                )}
-
-                                <textarea
-                                    className={`w-full text-sm text-gray-800 leading-relaxed outline-none focus:bg-yellow-50 rounded px-2 py-1 -mx-2 resize-y bg-transparent min-h-[4rem]
-                                        ${isProcessing ? 'opacity-50 cursor-not-allowed select-none' : ''}
-                                        ${isError ? 'text-red-600' : ''}
-                                    `}
-                                    rows={Math.min(Math.max(3, block.text.split('\n').length), 10)}
-                                    value={block.text}
-                                    onChange={(e) => updateLocalBlockText(block.id, e.target.value)}
-                                    onBlur={(e) => persistBlockText(block.id, e.target.value)}
-                                    disabled={isReadOnly}
-                                    readOnly={isReadOnly}
-                                />
                             </div>
-                        </div>
+                        </React.Fragment>
                     );
                 })}
                 <div className="h-8"></div>
