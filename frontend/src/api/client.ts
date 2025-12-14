@@ -40,5 +40,8 @@ export const endpoints = {
     vocabulary: {
         list: '/api/vocabulary/',
         detail: (id: string) => `/api/vocabulary/${id}`,
+    },
+    settings: {
+        list: '/api/settings/',
     }
 };

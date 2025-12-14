@@ -422,7 +422,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             <code className="bg-gray-100 px-1 rounded">{`{recentry_output}`}</code>: エディタの内容
                                         </div>
                                         <textarea
-                                            value={(generalSettings as any).promptStructure || `{system_prompt}\n\n{checked_transcribe_list}\n\n{recentry_output}\n\n{user_prompt}`}
+                                            value={(generalSettings as any).promptStructure || `{system_prompt}\n\n<Context>\n{checked_transcribe_list}\n</Context>\n\n<CurrentContent>\n{recentry_output}\n</CurrentContent>\n\n<UserInstruction>\n{user_prompt}\n</UserInstruction>`}
                                             onChange={(e) => setGeneralSettings({ ...generalSettings, promptStructure: e.target.value } as any)}
                                             className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono h-64"
                                             placeholder="プロンプトの構成を入力..."

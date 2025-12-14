@@ -27,6 +27,9 @@ app.include_router(templates.router, prefix="/api/templates", tags=["templates"]
 app.include_router(vocabulary.router, prefix="/api/vocabulary", tags=["vocabulary"])
 app.include_router(revisions.router, prefix="/api", tags=["revisions"])
 
+from app.api.endpoints import settings as settings_endpoint
+app.include_router(settings_endpoint.router, prefix="/api/settings", tags=["settings"])
+
 @app.get("/")
 def read_root():
     return {"Hello": "Vox Backend API"}

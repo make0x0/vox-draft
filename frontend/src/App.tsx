@@ -233,13 +233,14 @@ export default function App() {
     }]);
   };
 
-  // Settings State
-  const [generalSettings, setGeneralSettings] = useLocalStorage('vox_general_settings', {
-    language: 'ja',
-    encoding: 'UTF-8',
-    lineEnding: 'LF',
-    promptStructure: `{system_prompt}\n\n[Context]\n{checked_transcribe_list}\n\n[Current Content]\n{recentry_output}\n\n[Instruction]\n{user_prompt}`
-  });
+  // Settings State - Server Side
+  const { generalSettings, updateGeneralSettings } = settingsData;
+  const setGeneralSettings = (updater: any) => {
+    // Adapter for existing code expecting useState-like setter
+    const newSettings = typeof updater === 'function' ? updater(generalSettings) : updater;
+    updateGeneralSettings(newSettings);
+  };
+  // const [generalSettings, setGeneralSettings] = useLocalStorage('vox_general_settings', { ... }); // Removed
 
   // Prompt Input State
   const [promptText, setPromptText] = useState("");
@@ -346,7 +347,7 @@ export default function App() {
     const contextText = targetBlocks.map(b => `- ${b.text}`).join('\n');
 
     // Construct the full prompt content using configurable structure
-    const structure = (generalSettings as any).promptStructure || `{system_prompt}\n\n[Context]\n{checked_transcribe_list}\n\n[Current Content]\n{recentry_output}\n\n[Instruction]\n{user_prompt}`;
+    const structure = (generalSettings as any).promptStructure || `{system_prompt}\n\n<Context>\n{checked_transcribe_list}\n</Context>\n\n<CurrentContent>\n{recentry_output}\n</CurrentContent>\n\n<UserInstruction>\n{user_prompt}\n</UserInstruction>`;
 
     const fullUserContent = structure
       .replace('{system_prompt}', systemPrompt || "あなたは優秀なアシスタントです。") // Wait, system prompt is typically separate. If used here, should we clear system role?
@@ -367,7 +368,7 @@ export default function App() {
     const messages: any[] = [
       // If the structure explicitly includes {system_prompt}, we might NOT want to duplicate it in the system role?
       // Or we just use a generic system role.
-      { role: "system", content: "あなたは優秀なアシスタントです。" },
+      { role: "system", content: "You are a helpful and intelligent AI assistant. Please output your response in Markdown format." },
       { role: "user", content: fullUserContent }
     ];
 

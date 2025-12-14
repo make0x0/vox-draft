@@ -118,4 +118,17 @@ class SettingsFileService:
         data["system_prompts"][key] = content
         self._write_yaml(data)
 
+    # --- General Settings ---
+    def get_general_settings(self) -> Dict[str, Any]:
+        data = self._read_yaml()
+        return data.get("general", {})
+
+    def update_general_settings(self, updates: Dict[str, Any]):
+        data = self._read_yaml()
+        if "general" not in data:
+            data["general"] = {}
+        data["general"].update(updates)
+        self._write_yaml(data)
+        return data["general"]
+
 settings_service = SettingsFileService()
