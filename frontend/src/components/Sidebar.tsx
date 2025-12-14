@@ -254,34 +254,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                         <button onClick={(e) => { e.stopPropagation(); onRestoreSession(item.id); }} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200" title="元に戻す"><RotateCcw size={14} /></button>
                                     ) : (
                                         !isSelectionMode && editingTitleId !== item.id && (
-                                            <div className="flex flex-col gap-1">
-                                                <button onClick={(e) => { e.stopPropagation(); startEditingTitle(item); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200"><Edit3 size={14} /></button>
-                                                <div className="relative">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setColorPickerSessionId(colorPickerSessionId === item.id ? null : item.id); }}
-                                                        className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200"
-                                                        title="色を変更"
-                                                    >
-                                                        <Palette size={14} />
-                                                    </button>
-                                                    {colorPickerSessionId === item.id && (
-                                                        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 min-w-[120px]">
-                                                            <div className="grid grid-cols-3 gap-1">
-                                                                {SESSION_COLORS.map((c) => (
-                                                                    <button
-                                                                        key={c.value || 'none'}
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            onColorChange(item.id, c.value);
-                                                                            setColorPickerSessionId(null);
-                                                                        }}
-                                                                        className={`w-8 h-8 rounded border-2 ${c.bg} ${c.border} hover:scale-110 transition-transform ${item.color === c.value ? 'ring-2 ring-blue-400' : ''}`}
-                                                                        title={c.name}
-                                                                    />
-                                                                ))}
+                                            <div className="flex items-center">
+                                                <div className="flex flex-col gap-1">
+                                                    <button onClick={(e) => { e.stopPropagation(); startEditingTitle(item); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200"><Edit3 size={14} /></button>
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setColorPickerSessionId(colorPickerSessionId === item.id ? null : item.id); }}
+                                                            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-white rounded shadow-sm border border-transparent hover:border-gray-200"
+                                                            title="色を変更"
+                                                        >
+                                                            <Palette size={14} />
+                                                        </button>
+                                                        {colorPickerSessionId === item.id && (
+                                                            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2 min-w-[120px]">
+                                                                <div className="grid grid-cols-3 gap-1">
+                                                                    {SESSION_COLORS.map((c) => (
+                                                                        <button
+                                                                            key={c.value || 'none'}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                onColorChange(item.id, c.value);
+                                                                                setColorPickerSessionId(null);
+                                                                            }}
+                                                                            className={`w-8 h-8 rounded border-2 ${c.bg} ${c.border} hover:scale-110 transition-transform ${item.color === c.value ? 'ring-2 ring-blue-400' : ''}`}
+                                                                            title={c.name}
+                                                                        />
+                                                                    ))}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="ml-3 border-l border-gray-200 pl-2">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onDeleteSessions([item.id]);
+                                                        }}
+                                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded shadow-sm border border-transparent hover:border-red-200"
+                                                        title="削除"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
                                                 </div>
                                             </div>
                                         )
