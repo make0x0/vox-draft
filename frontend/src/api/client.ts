@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Dynamic API URL based on current hostname
+// Dynamic API URL based on current hostname and port
 // This allows access from any device on the same network
 const getApiBaseUrl = (): string => {
     // If VITE_API_BASE_URL is set and not localhost, use it
@@ -9,12 +9,22 @@ const getApiBaseUrl = (): string => {
         return envUrl;
     }
 
-    // Otherwise, construct URL using current hostname
-    // This allows mobile devices to connect using the server's IP address
+    // Check if we're accessing through nginx (ports 80, 443, or empty)
+    const port = window.location.port;
+    const protocol = window.location.protocol;
+
+    if (port === '' || port === '80' || port === '443') {
+        // We're behind nginx proxy - use relative URL (nginx will proxy /api/ to backend)
+        const baseUrl = `${protocol}//${window.location.host}`;
+        console.log('[API Client] Using nginx proxy, base URL:', baseUrl);
+        return baseUrl;
+    }
+
+    // Direct access (development mode on port 5173)
+    // Use the backend directly on port 8000
     const hostname = window.location.hostname;
-    const port = '8000'; // Backend port
-    const url = `http://${hostname}:${port}`;
-    console.log('[API Client] Using API URL:', url, 'hostname:', hostname, 'current port:', window.location.port);
+    const url = `http://${hostname}:8000`;
+    console.log('[API Client] Direct access, using API URL:', url);
     return url;
 };
 

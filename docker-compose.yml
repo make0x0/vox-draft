@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - certs:/etc/nginx/certs
+    environment:
+      - CERT_HOSTS=localhost,vox-draft
+      - CERT_IPS=127.0.0.1,192.168.0.55
+      - CERT_DAYS=365
+    depends_on:
+      - frontend
+      - backend
+
   frontend:
     build:
       context: ./frontend
@@ -42,3 +59,4 @@ services:
 
 volumes:
   postgres_data:
+  certs:

@@ -98,15 +98,35 @@ system:
 docker compose up --build
 ```
 
-ブラウザで `http://localhost:5173` にアクセスします。
+ブラウザで `https://localhost` にアクセスします。
 
-### 他デバイスからのアクセス
+> [!NOTE]
+> 初回アクセス時に証明書警告が表示されます。自己署名証明書のため想定通りの動作です。
+> 「詳細」→「このサイトにアクセスする」で続行してください。
 
-同じネットワーク内のモバイル端末やPCからアクセスする場合は、ホストマシンのIPアドレスを使用します：
+### 他デバイスからのアクセス (HTTPS)
 
-```
-http://<ホストのIPアドレス>:5173
-```
+スマートフォンやタブレットからマイクを使用するには、HTTPSでアクセスする必要があります。
+
+1. `docker-compose.yml` で証明書設定を更新：
+   ```yaml
+   nginx:
+     environment:
+       - CERT_HOSTS=localhost,vox-draft
+       - CERT_IPS=127.0.0.1,192.168.1.100  # ホストのIPを追加
+       - CERT_DAYS=365  # 証明書有効期限（日）
+   ```
+
+2. コンテナを再起動：
+   ```bash
+   docker compose down && docker compose up --build
+   ```
+
+3. ブラウザでアクセス：
+   ```
+   https://<ホストのIPアドレス>
+   ```
+
 
 ## データ保存場所
 
@@ -152,6 +172,7 @@ vox-draft/
 │   ├── data/          # データ保存ディレクトリ (Git除外)
 │   ├── config.yaml    # API設定
 │   └── .env           # APIキー (Git除外)
+├── nginx/             # Nginxリバースプロキシ (HTTPS)
 ├── docs/              # 詳細ドキュメント
 └── docker-compose.yml # コンテナ構成
 ```
@@ -168,9 +189,15 @@ vox-draft/
 - `config.yaml` でプロバイダーとエンドポイントが正しく設定されているか確認
 - Dockerコンテナを再起動: `docker compose restart backend`
 
-### モバイルからデータが見えない
-- ホストマシンのファイアウォールでポート5173と8000が許可されているか確認
-- `http://<IPアドレス>:5173` でアクセスしているか確認 (`localhost` は別デバイスから使用不可)
+### モバイルからマイクが使えない
+- `https://` でアクセスしているか確認（HTTPではマイクが動作しません）
+- `docker-compose.yml` で `CERT_IPS` にホストのIPアドレスを追加しているか確認
+- コンテナを再起動: `docker compose down && docker compose up --build`
+
+### 証明書警告が表示される
+- 自己署名証明書のため想定通りの動作です
+- 「詳細」→「このサイトにアクセスする」で続行してください
+- iOS: 「設定」→「一般」→「情報」→「証明書信頼設定」で証明書を信頼設定することも可能
 
 ### データベースエラー
 - コンテナを完全に再構築: `docker compose down && docker compose up --build`
