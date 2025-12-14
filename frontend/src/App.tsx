@@ -5,7 +5,6 @@ import { client, endpoints } from './api/client';
 import { useSessions } from './hooks/useSessions';
 import { useBlocks } from './hooks/useBlocks';
 import { useAudioRecorder } from './hooks/useAudioRecorder';
-import { useLocalStorage } from './hooks/useLocalStorage';
 import { useLLM } from './hooks/useLLM';
 import { useSettingsData } from './hooks/useSettingsData';
 
@@ -583,15 +582,27 @@ export default function App() {
 
   // ... imports
 
-  // Resizing State
-  const [sidebarWidth, setSidebarWidth] = useLocalStorage('vox_sidebar_width', 300);
-  const [editorWidth, setEditorWidth] = useLocalStorage('vox_editor_width', 350);
-  const [promptHeight, setPromptHeight] = useLocalStorage('vox_prompt_height', '80px');
+  // Resizing State - Now using server-side settings via settingsData
+  const sidebarWidth = settingsData.generalSettings?.sidebar_width ?? 300;
+  const editorWidth = settingsData.generalSettings?.editor_width ?? 350;
+  const promptHeight = settingsData.generalSettings?.prompt_height ?? '80px';
+
+  const setSidebarWidth = (width: number) => {
+    settingsData.updateGeneralSettings({ sidebar_width: width });
+  };
+  const setEditorWidth = (width: number) => {
+    settingsData.updateGeneralSettings({ editor_width: width });
+  };
+  const setPromptHeight = (height: string) => {
+    settingsData.updateGeneralSettings({ prompt_height: height });
+  };
 
   const handleResetLayout = () => {
-    setSidebarWidth(300);
-    setEditorWidth(350);
-    setPromptHeight('80px');
+    settingsData.updateGeneralSettings({
+      sidebar_width: 300,
+      editor_width: 350,
+      prompt_height: '80px'
+    });
   };
 
   const isDraggingSidebar = useRef(false);

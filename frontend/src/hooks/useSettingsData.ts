@@ -9,7 +9,11 @@ export const useSettingsData = () => {
         language: 'ja',
         encoding: 'UTF-8',
         lineEnding: 'LF',
-        promptStructure: `{system_prompt}\n\n<Context>\n{checked_transcribe_list}\n</Context>\n\n<CurrentContent>\n{recentry_output}\n</CurrentContent>\n\n<UserInstruction>\n{user_prompt}\n</UserInstruction>`
+        promptStructure: `{system_prompt}\n\n<Context>\n{checked_transcribe_list}\n</Context>\n\n<CurrentContent>\n{recentry_output}\n</CurrentContent>\n\n<UserInstruction>\n{user_prompt}\n</UserInstruction>`,
+        // Layout settings (defaults matching localStorage)
+        sidebar_width: 300,
+        editor_width: 350,
+        prompt_height: '80px'
     });
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
