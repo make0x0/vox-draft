@@ -30,7 +30,7 @@ export default function App() {
   // Settings Data Hook (Persistence)
   const settingsData = useSettingsData();
   // Unwrap for cleaner usage if desired, or pass settingsData directly
-  const { templates, vocabulary, setTemplates: _setTemplates, setVocabulary: _setVocabulary } = settingsData;
+  const { templates, vocabulary, setTemplates: _setTemplates, setVocabulary: _setVocabulary, isMobile } = settingsData;
 
   const [editorContent, setEditorContent] = useState<string>("# New Session...");
 
