@@ -1,15 +1,26 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import desc
+import asyncio
 
 from app.db.base import get_db
 from app.models.session import Session as SessionModel
 from app.models.transcription_block import TranscriptionBlock as BlockModel
 from app.schemas import session as session_schema
 from app.schemas import transcription_block as block_schema
+from app.api.endpoints.websocket import broadcast_event
 
 router = APIRouter()
+
+
+async def run_broadcast(event_type: str, payload: dict = None):
+    """Broadcast event to all WebSocket clients"""
+    try:
+        await broadcast_event(event_type, payload)
+        print(f"[Broadcast] Sent: {event_type} - {payload}")
+    except Exception as e:
+        print(f"[Broadcast] Error: {e}")
 
 @router.get("/", response_model=List[session_schema.SessionList])
 def list_sessions(skip: int = 0, limit: int = 100, db: DBSession = Depends(get_db)):
@@ -56,7 +67,7 @@ from zoneinfo import ZoneInfo
 from app.core.config import settings
 
 @router.post("/", response_model=session_schema.Session)
-def create_session(session_in: session_schema.SessionCreate, db: DBSession = Depends(get_db)):
+async def create_session(session_in: session_schema.SessionCreate, db: DBSession = Depends(get_db)):
     tz = ZoneInfo(settings.TIMEZONE)
     today_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M")
     default_title = f"{today_str} MEMO"
@@ -67,10 +78,11 @@ def create_session(session_in: session_schema.SessionCreate, db: DBSession = Dep
     db.add(db_session)
     db.commit()
     db.refresh(db_session)
+    await run_broadcast("session_created", {"session_id": db_session.id})
     return db_session
 
 @router.patch("/{session_id}", response_model=session_schema.Session)
-def update_session(session_id: str, session_in: session_schema.SessionUpdate, db: DBSession = Depends(get_db)):
+async def update_session(session_id: str, session_in: session_schema.SessionUpdate, db: DBSession = Depends(get_db)):
     db_session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
     if not db_session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -84,16 +96,18 @@ def update_session(session_id: str, session_in: session_schema.SessionUpdate, db
     
     db.commit()
     db.refresh(db_session)
+    await run_broadcast("session_updated", {"session_id": session_id})
     return db_session
 
 @router.delete("/{session_id}")
-def delete_session(session_id: str, db: DBSession = Depends(get_db)):
+async def delete_session(session_id: str, db: DBSession = Depends(get_db)):
     db_session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
     if not db_session:
          raise HTTPException(status_code=404, detail="Session not found")
     
     db_session.is_deleted = True
     db.commit()
+    await run_broadcast("session_deleted", {"session_id": session_id})
     return {"ok": True}
 
 @router.post("/{session_id}/restore", response_model=session_schema.Session)
@@ -144,7 +158,7 @@ def empty_session_trash(db: DBSession = Depends(get_db)):
 # --- Block Operations ---
 
 @router.post("/{session_id}/blocks", response_model=block_schema.TranscriptionBlock)
-def create_block(session_id: str, block_in: block_schema.TranscriptionBlockBase, db: DBSession = Depends(get_db)):
+async def create_block(session_id: str, block_in: block_schema.TranscriptionBlockBase, db: DBSession = Depends(get_db)):
     # Check session exists
     session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
     if not session:
@@ -164,10 +178,11 @@ def create_block(session_id: str, block_in: block_schema.TranscriptionBlockBase,
     db.add(db_block)
     db.commit()
     db.refresh(db_block)
+    await run_broadcast("block_created", {"session_id": session_id, "block_id": db_block.id})
     return db_block
 
 @router.patch("/blocks/{block_id}", response_model=block_schema.TranscriptionBlock)
-def update_block(block_id: str, block_in: block_schema.TranscriptionBlockUpdate, db: DBSession = Depends(get_db)):
+async def update_block(block_id: str, block_in: block_schema.TranscriptionBlockUpdate, db: DBSession = Depends(get_db)):
     db_block = db.query(BlockModel).filter(BlockModel.id == block_id).first()
     if not db_block:
         raise HTTPException(status_code=404, detail="Block not found")
@@ -181,10 +196,11 @@ def update_block(block_id: str, block_in: block_schema.TranscriptionBlockUpdate,
         
     db.commit()
     db.refresh(db_block)
+    await run_broadcast("block_updated", {"session_id": db_block.session_id, "block_id": block_id})
     return db_block
 
 @router.post("/{session_id}/blocks/batch_update")
-def batch_update_blocks(session_id: str, bulk_in: block_schema.TranscriptionBlockBulkUpdate, db: DBSession = Depends(get_db)):
+async def batch_update_blocks(session_id: str, bulk_in: block_schema.TranscriptionBlockBulkUpdate, db: DBSession = Depends(get_db)):
     """
     Bulk update blocks (e.g. check/uncheck all).
     """
@@ -195,15 +211,32 @@ def batch_update_blocks(session_id: str, bulk_in: block_schema.TranscriptionBloc
     if not update_data:
         return {"ok": True, "updated_count": 0}
     
-    stmt = db.query(BlockModel).filter(
-        BlockModel.id.in_(bulk_in.ids),
-        BlockModel.session_id == session_id
-    )
-    
-    updated_count = stmt.update(update_data, synchronize_session=False)
+    count = 0
+    # Standard query update or loop
+    # For safety/hooks, loop might be better but slow. 
+    # Bulk update is faster.
+    db.query(BlockModel).filter(BlockModel.id.in_(bulk_in.ids), BlockModel.session_id == session_id).update(update_data, synchronize_session=False)
     db.commit()
     
-    return {"ok": True, "updated_count": updated_count}
+    await run_broadcast("block_updated", {"session_id": session_id})
+    return {"ok": True, "updated_count": len(bulk_in.ids)}
+
+@router.post("/{session_id}/blocks/reorder")
+async def reorder_blocks(
+    session_id: str, 
+    reorder: block_schema.TranscriptionBlockReorder, 
+    db: DBSession = Depends(get_db)
+):
+    session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    for idx, block_id in enumerate(reorder.block_ids):
+        db.query(BlockModel).filter(BlockModel.id == block_id, BlockModel.session_id == session_id).update({"order_index": idx})
+        
+    db.commit()
+    await run_broadcast("block_updated", {"session_id": session_id})
+    return {"ok": True}
 
 @router.delete("/blocks/{block_id}")
 def delete_block(block_id: str, db: DBSession = Depends(get_db)):

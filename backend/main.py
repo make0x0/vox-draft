@@ -31,6 +31,10 @@ app.include_router(revisions.router, prefix="/api", tags=["revisions"])
 from app.api.endpoints import settings as settings_endpoint
 app.include_router(settings_endpoint.router, prefix="/api/settings", tags=["settings"])
 
+# WebSocket for real-time sync
+from app.api.endpoints import websocket as ws_endpoint
+app.include_router(ws_endpoint.router, tags=["websocket"])
+
 @app.get("/")
 def read_root():
     return {"Hello": "Vox Backend API"}

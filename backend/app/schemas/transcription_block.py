@@ -24,6 +24,9 @@ class TranscriptionBlockBulkUpdate(BaseModel):
     ids: List[str]
     update: TranscriptionBlockUpdate
 
+class TranscriptionBlockReorder(BaseModel):
+    block_ids: List[str]
+
 class TranscriptionBlock(TranscriptionBlockBase):
     id: str
     session_id: str
@@ -31,6 +34,7 @@ class TranscriptionBlock(TranscriptionBlockBase):
     timestamp: Optional[str] = None
     is_deleted: bool = False
     color: Optional[str] = None
+    order_index: int = 0
 
 
     class Config:

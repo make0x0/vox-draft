@@ -7,6 +7,7 @@ import { useBlocks } from './hooks/useBlocks';
 import { useAudioRecorder } from './hooks/useAudioRecorder';
 import { useLLM } from './hooks/useLLM';
 import { useSettingsData } from './hooks/useSettingsData';
+import { useWebSocket } from './hooks/useWebSocket';
 
 import { Sidebar } from './components/Sidebar';
 import { TranscriptionList } from './components/TranscriptionList';
@@ -31,6 +32,24 @@ export default function App() {
   const settingsData = useSettingsData();
   // Unwrap for cleaner usage if desired, or pass settingsData directly
   const { templates, vocabulary, setTemplates: _setTemplates, setVocabulary: _setVocabulary, isMobile } = settingsData;
+
+  // WebSocket for real-time sync between tabs/devices
+  useWebSocket({
+    onSessionChange: () => {
+      console.log('[Sync] Sessions changed, refreshing...');
+      fetchSessions();
+    },
+    onBlockChange: (sessionId) => {
+      console.log('[Sync] Blocks changed for session:', sessionId);
+      if (selectedSessionId === sessionId) {
+        fetchBlocks(sessionId, true);
+      }
+    },
+    onSettingsChange: () => {
+      console.log('[Sync] Settings changed, refreshing...');
+      settingsData.fetchSettings();
+    }
+  });
 
   const [editorContent, setEditorContent] = useState<string>("# New Session...");
 
@@ -326,7 +345,7 @@ export default function App() {
     try {
       await client.post(endpoints.stt.transcribe(id));
       addNotification("success", `ブロックID: ${id.substring(0, 6)}... の再認識を開始しました`);
-      if (selectedSessionId) fetchBlocks(selectedSessionId);
+      // WebSocket will handle the block update - no need to fetchBlocks here
     } catch (err) {
       console.error(err);
     }
@@ -447,6 +466,16 @@ export default function App() {
 
   const handleBlockCheck = (id: string, isChecked: boolean) => {
     updateBlock(id, { isChecked });
+  };
+
+  const handleReorderBlocks = async (blockIds: string[]) => {
+    if (!selectedSessionId) return;
+    try {
+      await client.post(endpoints.sessions.blocks.reorder(selectedSessionId), { block_ids: blockIds });
+    } catch (err) {
+      console.error("Failed to reorder blocks", err);
+      fetchBlocks(selectedSessionId);
+    }
   };
 
   const handleDeleteSessions = async (ids: string[]) => {
@@ -730,7 +759,8 @@ export default function App() {
               <div className="flex-1 overflow-hidden flex flex-col">
                 {(selectedSessionId && !blocksLoading) ? (
                   <TranscriptionList
-                    blocks={generalSettings.block_insert_position === 'top' ? [...blocks].reverse() : blocks}
+                    blocks={blocks}
+                    insertPosition={generalSettings.block_insert_position || 'top'}
                     setBlocks={handleSetBlocks}
                     onAddTextBlock={handleAddTextBlock}
                     onUploadFile={handleFileUpload}
@@ -738,6 +768,7 @@ export default function App() {
                     onReTranscribe={handleReTranscribe}
                     onUpdateBlock={handleBlockUpdate}
                     onCheckBlock={handleBlockCheck}
+                    onReorderBlocks={handleReorderBlocks}
                     onRestoreBlock={restoreBlock}
                     onEmptyTrash={() => {
                       if (selectedSessionId) emptyTrash(selectedSessionId);

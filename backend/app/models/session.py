@@ -22,6 +22,6 @@ class Session(Base):
     # Or import? Circular imports are risky in models. String is safer.
     # back_populates matches the one in TranscriptionBlock
     # back_populates matches the one in TranscriptionBlock
-    blocks = relationship("TranscriptionBlock", back_populates="session", cascade="all, delete-orphan", order_by="TranscriptionBlock.created_at")
+    blocks = relationship("TranscriptionBlock", back_populates="session", cascade="all, delete-orphan", order_by="TranscriptionBlock.order_index, TranscriptionBlock.created_at")
     
     revisions = relationship("EditorRevision", back_populates="session", cascade="all, delete-orphan", order_by="desc(EditorRevision.created_at)")

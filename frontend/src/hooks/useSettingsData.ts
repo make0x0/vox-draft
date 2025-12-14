@@ -228,5 +228,7 @@ export const useSettingsData = () => {
         // Device info
         deviceId,
         isMobile,
+        // For WebSocket sync
+        fetchSettings: fetchData,
     };
 };

@@ -4,6 +4,7 @@ import type { TranscriptionBlock } from '../types';
 
 interface TranscriptionListProps {
     blocks: TranscriptionBlock[];
+    insertPosition?: 'top' | 'bottom';
     setBlocks: React.Dispatch<React.SetStateAction<TranscriptionBlock[]>>;
     onAddTextBlock: () => void;
     onUploadFile: (file: File) => void;
@@ -15,6 +16,7 @@ interface TranscriptionListProps {
     onEmptyTrash: () => void;
     onToggleAllBlocks: (check: boolean) => void;
     onColorChange: (id: string, color: string | null) => void;
+    onReorderBlocks?: (blockIds: string[]) => void;
 }
 
 // Pastel colors for blocks (8 options)
@@ -32,6 +34,7 @@ const BLOCK_COLORS = [
 
 export const TranscriptionList: React.FC<TranscriptionListProps> = ({
     blocks,
+    insertPosition = 'bottom',
     setBlocks,
     onAddTextBlock,
     onUploadFile,
@@ -42,7 +45,8 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
     onRestoreBlock,
     onEmptyTrash,
     onToggleAllBlocks,
-    onColorChange
+    onColorChange,
+    onReorderBlocks
 }) => {
     const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
     const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
@@ -72,40 +76,103 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
         }
     };
 
+    const resetDragState = () => {
+        setDraggedBlockIndex(null);
+        setDragOverIndex(null);
+        setDraggedBlockHeight(null);
+    };
+
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
         setDraggedBlockIndex(index);
         setDraggedBlockHeight(e.currentTarget.offsetHeight);
+        // Required for Firefox
+        e.dataTransfer.effectAllowed = 'move';
     };
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
-        // Crucial for allowing drop
+        e.dataTransfer.dropEffect = 'move';
     };
+
     const handleDragEnter = (index: number) => {
         if (draggedBlockIndex !== null && draggedBlockIndex !== index) {
             setDragOverIndex(index);
         }
     };
-    const handleDrop = (index: number) => {
-        if (draggedBlockIndex === null || draggedBlockIndex === index) {
-            setDraggedBlockIndex(null);
-            setDragOverIndex(null);
-            setDraggedBlockHeight(null);
+
+    const handleDrop = (dropIndex: number) => {
+        if (draggedBlockIndex === null) {
+            resetDragState();
             return;
         }
-        const newBlocks = [...blocks];
-        const draggedBlock = newBlocks[draggedBlockIndex];
-        newBlocks.splice(draggedBlockIndex, 1);
-        newBlocks.splice(index, 0, draggedBlock);
+
+        // 1. Get dragged block ID safely
+        const draggedBlock = displayBlocks[draggedBlockIndex];
+        if (!draggedBlock) {
+            resetDragState();
+            return;
+        }
+
+        // 2. Remove dragged block from the FULL list (based on ID)
+        // We operate on 'blocks' (the full state), not just displayBlocks
+        const newBlocks = blocks.filter(b => b.id !== draggedBlock.id);
+
+        // 3. Determine insertion index in the new list
+        let insertIndex = -1;
+
+        if (dropIndex >= displayBlocks.length) {
+            // Appending to the end of visible list
+            // Find the last visible block (excluding the dragged one if it was last)
+            const remainingVisible = displayBlocks.filter(b => b.id !== draggedBlock.id);
+
+            if (remainingVisible.length === 0) {
+                // List was empty or only contained the dragged item
+                newBlocks.push(draggedBlock);
+            } else {
+                const lastVisibleBlock = remainingVisible[remainingVisible.length - 1];
+                const lastIndex = newBlocks.findIndex(b => b.id === lastVisibleBlock.id);
+                // Insert after the last visible block
+                newBlocks.splice(lastIndex + 1, 0, draggedBlock);
+            }
+        } else {
+            // Importing before a specific target block
+            // Note: dropIndex is based on the list BEFORE modification?
+            // Actually, dropIndex is just the index in displayBlocks where we want to drop.
+
+            // If we are dropping on the drop zone BEFORE displayBlocks[dropIndex]
+
+            // If dropIndex was greater than draggedBlockIndex, we need to adjust?
+            // No, because we use ID of the target block.
+
+            // Caution: If we drag item 0 to position 1 (dropIndex 1), 
+            // the target block at old index 1 becomes index 0 after removal.
+            // But we use ID lookups so it should be fine.
+
+            let targetBlock = displayBlocks[dropIndex];
+
+            // Special case: if dropping exactly where we started (target is same as dragged)
+            // The UI logic usually prevents dropIndex === draggedBlockIndex but check ID to be sure
+            if (targetBlock.id === draggedBlock.id) {
+                resetDragState();
+                return;
+            }
+
+            const targetRealIndex = newBlocks.findIndex(b => b.id === targetBlock.id);
+            if (targetRealIndex !== -1) {
+                newBlocks.splice(targetRealIndex, 0, draggedBlock);
+            } else {
+                // Fallback
+                newBlocks.push(draggedBlock);
+            }
+        }
+
         setBlocks(newBlocks);
-        setDraggedBlockIndex(null);
-        setDragOverIndex(null);
-        setDraggedBlockHeight(null);
+        onReorderBlocks?.(newBlocks.map(b => b.id));
+        resetDragState();
     };
+
     const handleDragEnd = () => {
-        setDraggedBlockIndex(null);
-        setDragOverIndex(null);
-        setDraggedBlockHeight(null);
+        resetDragState();
     };
 
     const expandedBlock = blocks.find(b => b.id === expandedBlockId);
@@ -179,12 +246,27 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/50">
+            <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50 flex flex-col gap-3">
                 {displayBlocks.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-10 text-gray-400 text-sm">
                         {showTrash ? "ゴミ箱は空です" : "ブロックがありません"}
                     </div>
                 )}
+
+                {/* First drop zone - drop at position 0 */}
+                {draggedBlockIndex !== null && draggedBlockIndex !== 0 && displayBlocks.length > 0 && (
+                    <div
+                        className={`border-2 border-dashed rounded-lg transition-all duration-200 flex items-center justify-center text-gray-400 font-bold ${dragOverIndex === 0 ? 'bg-blue-100 border-blue-400' : 'bg-gray-100 border-gray-300'
+                            }`}
+                        style={{ minHeight: draggedBlockHeight ? `${draggedBlockHeight}px` : '60px' }}
+                        onDragOver={handleDragOver}
+                        onDragEnter={() => handleDragEnter(0)}
+                        onDrop={() => handleDrop(0)}
+                    >
+                        ここにドロップ
+                    </div>
+                )}
+
                 {displayBlocks.map((block, index) => {
                     // Detect status
                     const isProcessing = (!block.isDeleted) && block.text.startsWith('(') && block.text.endsWith(')');
@@ -194,28 +276,28 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
 
                     // DnD Placeholder Logic
                     const isDragged = draggedBlockIndex === index;
+
+                    // Show drop target BEFORE this block if dragOverIndex matches this index
+                    // Special case: if dragging downwards (dragged < index), we target after, but the drop logic uses index
+                    // Here we simplify: if dragOverIndex is THIS index, show drop zone BEFORE this block
                     const isDropTarget = dragOverIndex === index && !isDragged;
 
                     return (
                         <React.Fragment key={block.id}>
-                            {/* Visual Placeholder when dragging over an item */}
+                            {/* Drop Zone */}
                             {draggedBlockIndex !== null && isDropTarget && (
                                 <div
-                                    className="bg-gray-200 border-2 border-dashed border-gray-400 rounded-lg mx-1 animate-pulse flex items-center justify-center text-gray-400 font-bold mb-3 transition-all duration-200"
-                                    style={{ height: draggedBlockHeight ? `${draggedBlockHeight}px` : '48px' }}
+                                    className="bg-gray-100 border-2 border-dashed border-gray-400 rounded-lg mx-1 animate-pulse flex items-center justify-center text-gray-400 font-bold mb-3 transition-all duration-200"
+                                    style={{ height: draggedBlockHeight ? `${draggedBlockHeight}px` : '100px', minHeight: '60px' }}
                                     onDragOver={handleDragOver}
                                     onDrop={() => handleDrop(index)}
                                 >
-                                    Drop Here
+                                    ここにドロップ
                                 </div>
                             )}
-
                             <div
-                                draggable={!showTrash}
-                                onDragStart={(e) => handleDragStart(e, index)}
                                 onDragOver={handleDragOver}
                                 onDragEnter={() => handleDragEnter(index)}
-                                onDragEnd={handleDragEnd}
                                 onDrop={() => handleDrop(index)}
                                 className={`p-3 rounded-lg shadow-sm border transition-all flex gap-3 group relative
                                     ${block.isChecked ? 'ring-1 ring-blue-100' : ''}
@@ -232,7 +314,12 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                                     ${!block.color ? 'bg-white border-gray-200' : ''}
                                 `}
                             >
-                                <div className="flex flex-col items-center justify-center cursor-grab text-gray-300 hover:text-gray-500 pt-1">
+                                <div
+                                    draggable={!showTrash}
+                                    onDragStart={(e) => handleDragStart(e, index)}
+                                    onDragEnd={handleDragEnd}
+                                    className="flex flex-col items-center justify-center cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 pt-1 hover:bg-black/5 rounded px-0.5 transition-colors"
+                                >
                                     <GripVertical size={16} />
                                 </div>
                                 <div className="pt-1">
@@ -292,7 +379,7 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <button onClick={() => onDeleteBlock(block.id)} className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-red-50" title="削除"><Trash2 size={14} /></button>
+                                                    <button onClick={() => onDeleteBlock(block.id)} className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-red-50 ml-4" title="削除"><Trash2 size={14} /></button>
                                                 </>
                                             )}
                                         </div>
@@ -328,6 +415,24 @@ export const TranscriptionList: React.FC<TranscriptionListProps> = ({
                         </React.Fragment>
                     );
                 })}
+
+                {/* Final Drop Zone (for appending to end) */}
+                {draggedBlockIndex !== null && displayBlocks.length > 0 && (
+                    <div
+                        className={`border-2 border-dashed rounded-lg transition-all duration-200 flex items-center justify-center text-gray-400 font-bold ${dragOverIndex === displayBlocks.length ? 'bg-blue-100 border-blue-400' : 'bg-transparent border-transparent h-10'
+                            }`}
+                        style={{
+                            height: dragOverIndex === displayBlocks.length ? (draggedBlockHeight ? `${draggedBlockHeight}px` : '100px') : '40px',
+                            minHeight: dragOverIndex === displayBlocks.length ? '60px' : '20px'
+                        }}
+                        onDragOver={handleDragOver}
+                        onDragEnter={() => handleDragEnter(displayBlocks.length)}
+                        onDrop={() => handleDrop(displayBlocks.length)}
+                    >
+                        {dragOverIndex === displayBlocks.length ? 'ここにドロップ' : ''}
+                    </div>
+                )}
+
                 <div className="h-8"></div>
             </div>
 

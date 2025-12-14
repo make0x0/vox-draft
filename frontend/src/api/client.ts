@@ -56,6 +56,7 @@ export const endpoints = {
             update: (blockId: string) => `/api/sessions/blocks/${blockId}`,
             restore: (blockId: string) => `/api/sessions/blocks/${blockId}/restore`,
             batchUpdate: (sessionId: string) => `/api/sessions/${sessionId}/blocks/batch_update`,
+            reorder: (sessionId: string) => `/api/sessions/${sessionId}/blocks/reorder`,
         },
         trash: {
             empty: (sessionId: string) => `/api/sessions/${sessionId}/trash`,
