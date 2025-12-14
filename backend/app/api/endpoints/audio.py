@@ -54,13 +54,21 @@ def upload_audio_file(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
+    # Determine next order_index (same logic as sessions.py create_block)
+    from sqlalchemy import func
+    max_order = db.query(func.max(TranscriptionBlock.order_index)).filter(
+        TranscriptionBlock.session_id == session_id
+    ).scalar()
+    next_order = (max_order if max_order is not None else -1) + 1
+
     # Create TranscriptionBlock
     block = TranscriptionBlock(
         session_id=session_id,
         type="audio",
         file_path=file_path,
         text="(Transcription queued...)" ,
-        timestamp=datetime.now(tz).strftime("%H:%M:%S")
+        timestamp=datetime.now(tz).strftime("%H:%M:%S"),
+        order_index=next_order
     )
     db.add(block)
     db.commit()
