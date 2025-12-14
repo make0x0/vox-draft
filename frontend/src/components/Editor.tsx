@@ -93,7 +93,7 @@ export const Editor: React.FC<EditorProps> = ({
                     </div>
 
                     {/* Save Menu */}
-                    <div className="relative" ref={menuRef}>
+                    <div className="relative flex items-center gap-2" ref={menuRef}>
                         <button
                             onClick={() => setShowSaveMenu(!showSaveMenu)}
                             className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-gray-50 flex items-center gap-1 transition-colors"
@@ -108,7 +108,7 @@ export const Editor: React.FC<EditorProps> = ({
                                 navigator.clipboard.writeText(content);
                                 // Simple feedback?
                             }}
-                            className="ml-2 text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-gray-50 flex items-center gap-1 transition-colors"
+                            className="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-gray-50 flex items-center gap-1 transition-colors"
                             title="全体をコピー"
                         >
                             <Copy size={12} />
