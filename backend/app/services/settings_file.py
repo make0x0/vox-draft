@@ -123,12 +123,49 @@ class SettingsFileService:
         data = self._read_yaml()
         return data.get("general", {})
 
+    # Fields that should be encrypted when saved
+    SENSITIVE_FIELDS = [
+        "openai_api_key",
+        "azure_openai_api_key",
+        "azure_openai_ad_token",
+        "gemini_api_key",
+    ]
+
+    def _encrypt_sensitive_fields(self, updates: Dict[str, Any]) -> Dict[str, Any]:
+        """Encrypt sensitive fields if they're not already encrypted."""
+        try:
+            from app.services.crypto import encrypt, is_encrypted, PUBLIC_KEY_FILE
+            
+            # Check if encryption is available (keys exist)
+            if not PUBLIC_KEY_FILE.exists():
+                print("[Settings] Encryption keys not found, saving plaintext")
+                return updates
+            
+            encrypted_updates = updates.copy()
+            for field in self.SENSITIVE_FIELDS:
+                if field in encrypted_updates:
+                    value = encrypted_updates[field]
+                    # Only encrypt if value is non-empty and not already encrypted
+                    if value and isinstance(value, str) and not is_encrypted(value):
+                        encrypted_updates[field] = encrypt(value)
+                        print(f"[Settings] Encrypted field: {field}")
+            
+            return encrypted_updates
+        except Exception as e:
+            print(f"[Settings] Encryption failed, saving plaintext: {e}")
+            return updates
+
     def update_general_settings(self, updates: Dict[str, Any]):
         data = self._read_yaml()
         if "general" not in data:
             data["general"] = {}
-        data["general"].update(updates)
+        
+        # Encrypt sensitive fields before saving
+        encrypted_updates = self._encrypt_sensitive_fields(updates)
+        
+        data["general"].update(encrypted_updates)
         self._write_yaml(data)
         return data["general"]
 
 settings_service = SettingsFileService()
+

@@ -4,20 +4,31 @@ import yaml
 from pathlib import Path
 from pydantic_settings import BaseSettings
 
-class Settings(BaseSettings):
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://user:password@db:5432/vox")
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    
-    # Loaded from yaml
-    # Azure Env Vars
-    AZURE_OPENAI_API_KEY: str = os.getenv("AZURE_OPENAI_API_KEY", "")
-    AZURE_OPENAI_AD_TOKEN: str = os.getenv("AZURE_OPENAI_AD_TOKEN", "") # Bearer Token support
-    AZURE_OPENAI_ENDPOINT: str = "" # Set by yaml logic only
-    
-    # Gemini
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+# Helper for decrypting ENC: prefixed values
+def _decrypt_value(value: str) -> str:
+    """Decrypt value if it has ENC: prefix."""
+    if not value:
+        return value
+    if value.startswith("ENC:"):
+        try:
+            from app.services.crypto import decrypt
+            return decrypt(value)
+        except Exception as e:
+            print(f"[Config] WARNING: Failed to decrypt value: {e}")
+    return value
 
-    # Loaded from yaml
+class Settings(BaseSettings):
+    # Database (still from env as it's infrastructure config)
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://user:password@db:5432/vox")
+    
+    # API Keys - loaded from settings.yaml (set by load_credentials)
+    OPENAI_API_KEY: str = ""
+    AZURE_OPENAI_API_KEY: str = ""
+    AZURE_OPENAI_AD_TOKEN: str = ""
+    AZURE_OPENAI_ENDPOINT: str = ""
+    GEMINI_API_KEY: str = ""
+
+    # Loaded from config.yaml
     ALLOWED_ORIGINS: list = ["*"]
     STT_API_URL: str = ""
     STT_PROVIDER: str = "openai"
@@ -45,9 +56,48 @@ class Settings(BaseSettings):
     NOTIFICATIONS: dict = {}
 
     class Config:
+        # Only load DATABASE_URL from .env (infrastructure config)
         env_file = ".env"
 
+# Path to settings.yaml
+SETTINGS_YAML_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "settings.yaml"
+
+def load_credentials():
+    """Load API credentials from settings.yaml with decryption support."""
+    if not SETTINGS_YAML_PATH.exists():
+        print(f"[Config] No settings.yaml found at {SETTINGS_YAML_PATH}, using defaults")
+        return
+    
+    try:
+        with open(SETTINGS_YAML_PATH, "r", encoding="utf-8") as f:
+            yaml_data = yaml.safe_load(f) or {}
+        
+        general = yaml_data.get("general", {})
+        
+        # Load and decrypt API keys
+        settings.OPENAI_API_KEY = _decrypt_value(str(general.get("openai_api_key", "") or ""))
+        settings.AZURE_OPENAI_API_KEY = _decrypt_value(str(general.get("azure_openai_api_key", "") or ""))
+        settings.AZURE_OPENAI_AD_TOKEN = _decrypt_value(str(general.get("azure_openai_ad_token", "") or ""))
+        settings.AZURE_OPENAI_ENDPOINT = str(general.get("azure_openai_endpoint", "") or "")
+        settings.GEMINI_API_KEY = _decrypt_value(str(general.get("gemini_api_key", "") or ""))
+        
+        # Load provider settings from general (these override config.yaml)
+        if general.get("stt_provider"):
+            settings.STT_PROVIDER = general.get("stt_provider")
+        if general.get("stt_gemini_model"):
+            settings.STT_GEMINI_MODEL = general.get("stt_gemini_model")
+        if general.get("llm_provider"):
+            settings.LLM_PROVIDER = general.get("llm_provider")
+        if general.get("llm_gemini_model"):
+            settings.LLM_GEMINI_MODEL = general.get("llm_gemini_model")
+            
+        print(f"[Config] Loaded credentials from settings.yaml")
+        
+    except Exception as e:
+        print(f"[Config] Error loading settings.yaml: {e}")
+
 def load_config():
+    """Load system configuration from config.yaml."""
     config_path = Path("config.yaml")
     if config_path.exists():
         with open(config_path, "r") as f:
@@ -57,9 +107,6 @@ def load_config():
             stt = system.get("stt", {})
             llm = system.get("llm", {})
 
-            # Global Env Fallback -> REMOVED to enforce config.yaml source
-            # default_azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
-
             settings.ALLOWED_ORIGINS = system.get("server", {}).get("allowed_origins", ["*"])
             
             settings.STT_API_URL = stt.get("openai_api_url", "")
@@ -67,7 +114,7 @@ def load_config():
             settings.STT_GEMINI_MODEL = stt.get("gemini_model", "gemini-2.5-flash")
             settings.STT_AZURE_DEPLOYMENT = stt.get("azure_deployment", "whisper")
             settings.STT_AZURE_API_VERSION = stt.get("azure_api_version", "2024-06-01")
-            settings.STT_AZURE_ENDPOINT = stt.get("azure_endpoint", "") # Must be in YAML
+            settings.STT_AZURE_ENDPOINT = stt.get("azure_endpoint", "")
             settings.STT_AZURE_ENDPOINT_RAW = settings.STT_AZURE_ENDPOINT
             settings.STT_TIMEOUT = float(stt.get("timeout", 60.0))
             settings.STT_MAX_RETRIES = int(stt.get("max_retries", 3))
@@ -79,7 +126,7 @@ def load_config():
             settings.LLM_GEMINI_MODEL = llm.get("gemini_model", "gemini-2.5-flash")
             settings.LLM_AZURE_DEPLOYMENT = llm.get("azure_deployment", "gpt-4o")
             settings.LLM_AZURE_API_VERSION = llm.get("azure_api_version", "2024-06-01")
-            settings.LLM_AZURE_ENDPOINT = llm.get("azure_endpoint", "") # Must be in YAML
+            settings.LLM_AZURE_ENDPOINT = llm.get("azure_endpoint", "")
             settings.LLM_AZURE_ENDPOINT_RAW = settings.LLM_AZURE_ENDPOINT
             settings.LLM_TIMEOUT = float(llm.get("timeout", 60.0))
             settings.LLM_MAX_RETRIES = int(llm.get("max_retries", 3))
@@ -89,11 +136,6 @@ def load_config():
             settings.TIMEZONE = app_config.get("timezone", "UTC")
             settings.DATE_FORMAT = app_config.get("date_format", "%Y-%m-%d %H:%M:%S")
             settings.NOTIFICATIONS = app_config.get("notifications", {})
-            
-            # Load Gemini API Key from YAML if present (allowing User override via config.yaml, though usually ENV)
-            # Typically users might put keys in config.yaml if self-hosting without env.
-            if system.get("gemini_api_key"):
-                settings.GEMINI_API_KEY = system.get("gemini_api_key")
 
 def _parse_azure_config(settings_obj, prefix, raw_endpoint):
     """
@@ -104,17 +146,14 @@ def _parse_azure_config(settings_obj, prefix, raw_endpoint):
         return
 
     # Pattern: https://{host}/openai/deployments/{deployment}/...
-    # Use non-greedy match for base endpoint to support paths (e.g. APIM)
     match = re.search(r"^(.*?)/openai/deployments/([^/\?]+)", raw_endpoint)
     if match:
         base_endpoint = match.group(1) + "/"
         deployment = match.group(2)
         
-        # dynamic update settings
         setattr(settings_obj, f"{prefix}_AZURE_ENDPOINT", base_endpoint)
         setattr(settings_obj, f"{prefix}_AZURE_DEPLOYMENT", deployment)
         
-        # Extract api-version
         version_match = re.search(r"api-version=([^&]+)", raw_endpoint)
         if version_match:
             api_version = version_match.group(1)
@@ -125,3 +164,5 @@ def _parse_azure_config(settings_obj, prefix, raw_endpoint):
 
 settings = Settings()
 load_config()
+# Load credentials AFTER config (settings.yaml overrides for provider/model)
+load_credentials()

@@ -54,20 +54,35 @@
 
 ### 1. APIキーの設定
 
-`backend/.env` ファイルを作成し、使用するプロバイダーに応じてAPIキーを設定します：
+`backend/data/settings.yaml` の `general` セクションにAPIキーを設定します：
 
-```bash
-# OpenAI を使用する場合
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# Azure OpenAI を使用する場合
-AZURE_OPENAI_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-# または Azure AD トークン認証
-# AZURE_OPENAI_AD_TOKEN=xxxxxxxx
-
-# Gemini を使用する場合
-GEMINI_API_KEY=AIzaSxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```yaml
+general:
+  # OpenAI を使用する場合
+  openai_api_key: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  
+  # Azure OpenAI を使用する場合
+  azure_openai_api_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  azure_openai_endpoint: "https://your-resource.openai.azure.com/"
+  # または Azure AD トークン認証
+  # azure_openai_ad_token: "xxxxxxxx"
+  
+  # Gemini を使用する場合
+  gemini_api_key: "AIzaSxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  
+  # プロバイダー設定
+  stt_provider: "openai"  # "openai", "azure", "gemini"
+  llm_provider: "openai"  # "openai", "azure", "gemini"
 ```
+
+> [!TIP]
+> **APIキーの暗号化（推奨）**
+> 設定ファイルの誤アップロードに備え、APIキーを暗号化できます：
+> ```bash
+> docker compose exec backend python encrypt_credential.py "your-api-key"
+> # 出力: ENC:xxxxxxxxxx...
+> ```
+> 暗号化された値を `settings.yaml` に設定すると、アプリが自動的に復号します。
 
 ### 2. プロバイダーの設定
 

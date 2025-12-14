@@ -14,6 +14,7 @@
 # Data (Sensitive / Local)
 data/
 backend/data/
+# Note: backend/data/keys/private.pem is excluded via backend/data/
 *.sqlite3
 *.db
 

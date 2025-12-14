@@ -1,8 +1,12 @@
 #!/bin/bash
 set -e
 
+# Ensure encryption keypair exists
+echo "Checking encryption keypair..."
+python -c "from app.services.crypto import ensure_keypair; ensure_keypair()"
+
 # Run migrations
-echo "Runnning migrations..."
+echo "Running migrations..."
 alembic upgrade head
 
 # Start server
