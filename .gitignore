@@ -11,6 +11,8 @@ desktop.ini
 .env.*
 !.env.sample
 !.env.example
+backend/config.yaml
+
 
 # Data (Sensitive / Local)
 data/

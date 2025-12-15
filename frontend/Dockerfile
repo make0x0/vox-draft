@@ -1,4 +1,4 @@
-FROM gcr.io/mirror/library/node:22-alpine
+FROM mirror.gcr.io/library/node:22-alpine
 
 WORKDIR /app
 

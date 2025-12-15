@@ -1,7 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.core.logging import configure_logging
+from app.services.settings_file import settings_service
 from app.api.endpoints import audio, stt, llm, data, sessions, templates, vocabulary, revisions
+
+# Initial Logging Configuration
+general_settings = settings_service.get_general_settings()
+configure_logging(general_settings.get("debug_mode", False))
 
 app = FastAPI(title="Vox Backend")
 

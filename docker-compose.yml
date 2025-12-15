@@ -59,7 +59,7 @@ services:
       - db
 
   db:
-    image: gcr.io/mirror/library/postgres:15
+    image: mirror.gcr.io/library/postgres:15
     restart: always
     environment:
       - POSTGRES_USER=user

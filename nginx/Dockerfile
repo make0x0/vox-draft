@@ -1,4 +1,4 @@
-FROM gcr.io/mirror/library/nginx:alpine
+FROM mirror.gcr.io/library/nginx:alpine
 
 # Install OpenSSL for certificate generation
 RUN apk add --no-cache openssl bash

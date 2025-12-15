@@ -1,4 +1,4 @@
-FROM gcr.io/mirror/library/python:3.10-slim
+FROM mirror.gcr.io/library/python:3.10-slim
 
 WORKDIR /app
 

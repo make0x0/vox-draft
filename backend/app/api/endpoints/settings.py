@@ -5,6 +5,8 @@ from app.schemas import settings as settings_schema
 from app.core.config import settings as app_settings
 from openai import OpenAI, AzureOpenAI
 import google.generativeai as genai
+import re
+from app.core.logging import configure_logging, log_safe
 
 router = APIRouter()
 
@@ -14,7 +16,10 @@ def get_settings():
 
 @router.patch("/")
 def update_settings(settings: Dict[str, Any]):
-    return settings_service.update_general_settings(settings)
+    updated = settings_service.update_general_settings(settings)
+    # Reconfigure logging if debug_mode changed
+    configure_logging(updated.get("debug_mode", False))
+    return updated
 
 @router.post("/test")
 def test_connection(request: settings_schema.TestConnectionRequest):
@@ -71,33 +76,48 @@ def test_connection(request: settings_schema.TestConnectionRequest):
             
             api_version = app_settings.LLM_AZURE_API_VERSION
             
-            if ad_token:
-                client = AzureOpenAI(
-                    azure_ad_token=ad_token,
-                    api_version=api_version,
-                    azure_endpoint=endpoint,
-                    timeout=10.0,
-                    max_retries=1
-                )
-            elif api_key:
-                client = AzureOpenAI(
-                    api_key=api_key,
-                    api_version=api_version,
-                    azure_endpoint=endpoint,
-                    timeout=10.0,
-                    max_retries=1
-                )
-            else:
-                 raise ValueError("Azure API Key or AD Token is required.")
+            # Clean up endpoint if it contains path
+            # AzureOpenAI client expects the base endpoint (resource URL)
+            # e.g. https://xyz.openai.azure.com/  (NOT .../openai/deployments/...)
+            clean_endpoint = endpoint
+            if "/openai/deployments" in endpoint:
+                match = re.search(r"^(https?://[^/]+)", endpoint)
+                if match:
+                    clean_endpoint = match.group(1) + "/"
+                    # log_safe(f"Normalized Azure Endpoint: {endpoint} -> {clean_endpoint}")
+            
+            # log_safe(f"Testing Azure Connection to: {clean_endpoint} with version {api_version}")
 
-            # Lightweight check? Azure sometimes restricts models.list
-            # Try correct one
             try:
+                if ad_token:
+                    client = AzureOpenAI(
+                        azure_ad_token=ad_token,
+                        api_version=api_version,
+                        azure_endpoint=clean_endpoint,
+                        timeout=10.0,
+                        max_retries=1
+                    )
+                elif api_key:
+                    client = AzureOpenAI(
+                        api_key=api_key,
+                        api_version=api_version,
+                        azure_endpoint=clean_endpoint,
+                        timeout=10.0,
+                        max_retries=1
+                    )
+                else:
+                     raise ValueError("Azure API Key or AD Token is required.")
+
+                # Lightweight check using models.list()
+                # Use verify logic: if models.list fails, it might be permissions or strict firewall.
+                # But usually models.list works on base endpoint.
                 client.models.list()
+                
             except Exception as e:
-                # If models.list fails (common in Azure strict policies), try a dummy completion?
-                # But we don't know deployment name here easily? request.deployment? 
-                # Let's stick to models.list and error implies auth/connect failure usually.
+                # If 404, it specifically means the Endpoint URL is likely wrong (resource not found).
+                error_str = str(e)
+                if "404" in error_str:
+                     raise ValueError(f"Resource Not Found (404). Please check your Azure Endpoint URL. It should normally look like 'https://{{resource}}.openai.azure.com/'. Original Error: {error_str}")
                 raise e
                 
             return {"ok": True, "message": "Successfully connected to Azure OpenAI."}

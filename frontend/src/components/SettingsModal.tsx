@@ -18,8 +18,8 @@ export interface SettingsModalProps {
     onDeleteVocab: (id: string) => Promise<void>;
 
     apiConfig: { stt: ApiConfig, llm: ApiConfig };
-    generalSettings: { language: string; encoding: string; lineEnding: string; promptStructure: string };
-    setGeneralSettings: (settings: { language: string; encoding: string; lineEnding: string; promptStructure: string }) => void;
+    generalSettings: { language: string; encoding: string; lineEnding: string; promptStructure: string; block_insert_position?: string; debug_mode?: boolean };
+    setGeneralSettings: (settings: { language: string; encoding: string; lineEnding: string; promptStructure: string; block_insert_position?: string; debug_mode?: boolean }) => void;
     onDataUpdated?: () => void;
 }
 
@@ -439,16 +439,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             <option value="LF">LF (\n)</option><option value="CRLF">CRLF (\r\n)</option>
                                         </select>
                                     </div>
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">ブロック挿入位置</label>
                                         <select
                                             value={generalSettings.block_insert_position || 'top'}
-                                            onChange={(e) => setGeneralSettings({ ...generalSettings, block_insert_position: e.target.value })}
+                                            onChange={(e) => setGeneralSettings({ ...generalSettings, block_insert_position: e.target.value } as any)}
                                             className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                                         >
                                             <option value="top">上部 (新しいものが上)</option>
                                             <option value="bottom">下部 (新しいものが下)</option>
                                         </select>
+                                    </div>
+
+                                    {/* Debug Mode */}
+                                    <div className="col-span-2 border-t pt-4 mt-2">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                id="debug_mode"
+                                                checked={generalSettings.debug_mode || false}
+                                                onChange={(e) => setGeneralSettings({ ...generalSettings, debug_mode: e.target.checked })}
+                                                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                            />
+                                            <label htmlFor="debug_mode" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                                                デバッグモードを有効にする
+                                            </label>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1 ml-6">
+                                            バックエンドのログ出力を詳細にします。認証情報はマスクされますが、トラブルシューティング時のみ有効にしてください。
+                                        </p>
                                     </div>
                                     <div className="col-span-2">
                                         <label className="block text-sm font-medium text-gray-700 mb-1">プロンプト構成 (上級者向け)</label>
