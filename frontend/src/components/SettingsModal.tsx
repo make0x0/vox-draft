@@ -742,24 +742,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <h5 className="text-sm font-bold text-gray-700 mb-2">Azure OpenAI Settings</h5>
                                         <div className="space-y-3">
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">Azure API Key</label>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">Azure API Key (共通)</label>
                                                 <input
                                                     type="password"
                                                     value={(generalSettings as any).azure_openai_api_key || ""}
                                                     onChange={(e) => setGeneralSettings({ ...generalSettings, azure_openai_api_key: e.target.value } as any)}
                                                     className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
+                                                    placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                                                 />
+                                                <p className="text-[10px] text-gray-400 mt-0.5">STT/LLM 共通で使用するAPIキー</p>
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">Azure Endpoint (https://...)</label>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">Azure STT Endpoint (音声認識用)</label>
                                                 <input
                                                     type="text"
-                                                    value={(generalSettings as any).azure_openai_endpoint || ""}
-                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, azure_openai_endpoint: e.target.value } as any)}
+                                                    value={(generalSettings as any).azure_openai_stt_endpoint || ""}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, azure_openai_stt_endpoint: e.target.value } as any)}
                                                     className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
-                                                    placeholder="https://my-resource.openai.azure.com/"
+                                                    placeholder="https://my-stt-resource.openai.azure.com/"
                                                 />
-                                                <p className="text-[10px] text-gray-400 mt-0.5">例: https://my-resource.openai.azure.com/</p>
+                                                <p className="text-[10px] text-gray-400 mt-0.5">例: https://my-stt-resource.openai.azure.com/</p>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">Azure LLM Endpoint (文章生成用)</label>
+                                                <input
+                                                    type="text"
+                                                    value={(generalSettings as any).azure_openai_llm_endpoint || ""}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, azure_openai_llm_endpoint: e.target.value } as any)}
+                                                    className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
+                                                    placeholder="https://my-llm-resource.openai.azure.com/"
+                                                />
+                                                <p className="text-[10px] text-gray-400 mt-0.5">例: https://my-llm-resource.openai.azure.com/</p>
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">Azure AD Token (Optional)</label>
