@@ -35,17 +35,28 @@ def test_connection(request: settings_schema.TestConnectionRequest):
             # Strict check: If user sends empty strings, we should NOT fall back to app_settings
             # unless the intention is to "test current effective settings".
             
-            endpoint = request.azure_openai_endpoint
-            if not endpoint and request.azure_openai_endpoint is not None:
-                 # It was passed as empty string
-                 raise ValueError("Azure Endpoint is empty.")
+            service_type = request.service_type or "llm"
             
+            # Select Endpoint based on service_type
+            endpoint = None
+            if service_type == "stt":
+                endpoint = request.azure_openai_stt_endpoint
+            elif service_type == "llm":
+                endpoint = request.azure_openai_llm_endpoint
+            
+            # Fallback to generic endpoint or app_settings if specific one is missing
+            if not endpoint:
+                endpoint = request.azure_openai_endpoint
+                
             if not endpoint:
                  # Fallback only if None (not passed)
-                 endpoint = app_settings.LLM_AZURE_ENDPOINT
+                 if service_type == "stt":
+                    endpoint = app_settings.AZURE_OPENAI_STT_ENDPOINT or app_settings.AZURE_OPENAI_ENDPOINT
+                 else:
+                    endpoint = app_settings.AZURE_OPENAI_LLM_ENDPOINT or app_settings.AZURE_OPENAI_ENDPOINT
             
             if not endpoint:
-                raise ValueError("Azure Endpoint is missing.")
+                raise ValueError(f"Azure Endpoint for {service_type} is missing.")
 
             ad_token = request.azure_openai_ad_token
             api_key = request.azure_openai_api_key

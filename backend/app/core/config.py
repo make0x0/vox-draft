@@ -25,29 +25,25 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     AZURE_OPENAI_API_KEY: str = ""
     AZURE_OPENAI_AD_TOKEN: str = ""
-    AZURE_OPENAI_ENDPOINT: str = ""
+    AZURE_OPENAI_ENDPOINT: str = "" # Fallback/Legacy
+    AZURE_OPENAI_STT_ENDPOINT: str = ""
+    AZURE_OPENAI_LLM_ENDPOINT: str = ""
     GEMINI_API_KEY: str = ""
 
     # Loaded from config.yaml
     ALLOWED_ORIGINS: list = ["*"]
-    STT_API_URL: str = ""
     STT_PROVIDER: str = "openai"
     STT_GEMINI_MODEL: str = "gemini-2.5-flash"
     STT_AZURE_DEPLOYMENT: str = "whisper"
     STT_AZURE_API_VERSION: str = "2024-06-01"
-    STT_AZURE_ENDPOINT: str = ""
-    STT_AZURE_ENDPOINT_RAW: str = ""
     STT_TIMEOUT: float = 60.0
     STT_MAX_RETRIES: int = 3
 
-    LLM_API_URL: str = ""
     LLM_PROVIDER: str = "openai"
     LLM_MODEL: str = "gpt-4o"
     LLM_GEMINI_MODEL: str = "gemini-2.5-flash"
     LLM_AZURE_DEPLOYMENT: str = "gpt-4o"
     LLM_AZURE_API_VERSION: str = "2024-06-01"
-    LLM_AZURE_ENDPOINT: str = ""
-    LLM_AZURE_ENDPOINT_RAW: str = ""
     LLM_TIMEOUT: float = 60.0
     LLM_MAX_RETRIES: int = 3
 
@@ -78,7 +74,12 @@ def load_credentials():
         settings.OPENAI_API_KEY = _decrypt_value(str(general.get("openai_api_key", "") or ""))
         settings.AZURE_OPENAI_API_KEY = _decrypt_value(str(general.get("azure_openai_api_key", "") or ""))
         settings.AZURE_OPENAI_AD_TOKEN = _decrypt_value(str(general.get("azure_openai_ad_token", "") or ""))
+        
+        # Load Endpoints (No decryption needed for URLs)
         settings.AZURE_OPENAI_ENDPOINT = str(general.get("azure_openai_endpoint", "") or "")
+        settings.AZURE_OPENAI_STT_ENDPOINT = str(general.get("azure_openai_stt_endpoint", "") or "")
+        settings.AZURE_OPENAI_LLM_ENDPOINT = str(general.get("azure_openai_llm_endpoint", "") or "")
+
         settings.GEMINI_API_KEY = _decrypt_value(str(general.get("gemini_api_key", "") or ""))
         
         # Load provider/model settings (settings.yaml is the single source of truth)
@@ -106,20 +107,12 @@ def load_config():
             settings.ALLOWED_ORIGINS = system.get("server", {}).get("allowed_origins", ["*"])
             
             # STT settings (provider is loaded from settings.yaml)
-            settings.STT_API_URL = stt.get("openai_api_url", "")
-            settings.STT_AZURE_ENDPOINT = stt.get("azure_endpoint", "")
-            settings.STT_AZURE_ENDPOINT_RAW = settings.STT_AZURE_ENDPOINT
             settings.STT_TIMEOUT = float(stt.get("timeout", 60.0))
             settings.STT_MAX_RETRIES = int(stt.get("max_retries", 3))
-            _parse_azure_config(settings, "STT", settings.STT_AZURE_ENDPOINT)
 
             # LLM settings (provider is loaded from settings.yaml)
-            settings.LLM_API_URL = llm.get("openai_api_url", "")
-            settings.LLM_AZURE_ENDPOINT = llm.get("azure_endpoint", "")
-            settings.LLM_AZURE_ENDPOINT_RAW = settings.LLM_AZURE_ENDPOINT
             settings.LLM_TIMEOUT = float(llm.get("timeout", 60.0))
             settings.LLM_MAX_RETRIES = int(llm.get("max_retries", 3))
-            _parse_azure_config(settings, "LLM", settings.LLM_AZURE_ENDPOINT)
             
             app_config = system.get("app", {})
             settings.TIMEZONE = app_config.get("timezone", "UTC")
@@ -127,29 +120,9 @@ def load_config():
             settings.NOTIFICATIONS = app_config.get("notifications", {})
 
 def _parse_azure_config(settings_obj, prefix, raw_endpoint):
-    """
-    If raw_endpoint is a full URL (e.g. .../openai/deployments/name/...),
-    extract base endpoint and deployment name, and update settings.
-    """
-    if not raw_endpoint:
-        return
-
-    # Pattern: https://{host}/openai/deployments/{deployment}/...
-    match = re.search(r"^(.*?)/openai/deployments/([^/\?]+)", raw_endpoint)
-    if match:
-        base_endpoint = match.group(1) + "/"
-        deployment = match.group(2)
-        
-        setattr(settings_obj, f"{prefix}_AZURE_ENDPOINT", base_endpoint)
-        setattr(settings_obj, f"{prefix}_AZURE_DEPLOYMENT", deployment)
-        
-        version_match = re.search(r"api-version=([^&]+)", raw_endpoint)
-        if version_match:
-            api_version = version_match.group(1)
-            setattr(settings_obj, f"{prefix}_AZURE_API_VERSION", api_version)
-            print(f"Parsed Azure {prefix} URL: Endpoint={base_endpoint}, Deployment={deployment}, Version={api_version}")
-        else:
-            print(f"Parsed Azure {prefix} URL: Endpoint={base_endpoint}, Deployment={deployment} (Version not found in URL)")
+    # Deprecated/Unused helper, keeping for safety or removing? 
+    # User asked to remove loading logic, so we can remove this function entirely if unused.
+    pass
 
 settings = Settings()
 load_config()

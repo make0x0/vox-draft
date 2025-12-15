@@ -547,9 +547,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                             console.log("Testing STT connection for", provider);
                                                             const res = await client.post('/api/settings/test', {
                                                                 provider: provider,
+                                                                service_type: 'stt',
                                                                 openai_api_key: (generalSettings as any).openai_api_key,
                                                                 azure_openai_api_key: (generalSettings as any).azure_openai_api_key,
                                                                 azure_openai_endpoint: (generalSettings as any).azure_openai_endpoint,
+                                                                azure_openai_stt_endpoint: (generalSettings as any).azure_openai_stt_endpoint,
+                                                                azure_openai_llm_endpoint: (generalSettings as any).azure_openai_llm_endpoint,
                                                                 azure_openai_ad_token: (generalSettings as any).azure_openai_ad_token,
                                                                 gemini_api_key: (generalSettings as any).gemini_api_key,
                                                             });
@@ -681,9 +684,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                                             console.log("Testing LLM connection for", provider);
                                                             const res = await client.post('/api/settings/test', {
                                                                 provider: provider,
+                                                                service_type: 'llm',
                                                                 openai_api_key: (generalSettings as any).openai_api_key,
                                                                 azure_openai_api_key: (generalSettings as any).azure_openai_api_key,
                                                                 azure_openai_endpoint: (generalSettings as any).azure_openai_endpoint,
+                                                                azure_openai_stt_endpoint: (generalSettings as any).azure_openai_stt_endpoint,
+                                                                azure_openai_llm_endpoint: (generalSettings as any).azure_openai_llm_endpoint,
                                                                 azure_openai_ad_token: (generalSettings as any).azure_openai_ad_token,
                                                                 gemini_api_key: (generalSettings as any).gemini_api_key,
                                                             });

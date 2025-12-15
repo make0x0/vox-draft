@@ -39,9 +39,17 @@ def get_openai_client(service_type: str = "llm"):
     azure_api_version = settings.LLM_AZURE_API_VERSION if service_type == "llm" else settings.STT_AZURE_API_VERSION # Version usually static or from env/yaml config load
 
 
+
     if provider == "azure":
         # Azure Configuration
-        endpoint = azure_endpoint
+        # Choose endpoint based on service_type
+        azure_endpoint_specific = None
+        if service_type == "stt":
+            azure_endpoint_specific = user_settings.get("azure_openai_stt_endpoint")
+        elif service_type == "llm":
+            azure_endpoint_specific = user_settings.get("azure_openai_llm_endpoint")
+            
+        endpoint = azure_endpoint_specific or azure_endpoint
         
         # Note: Azure OpenAI client requires (api_key OR azure_ad_token), api_version, and azure_endpoint
         if not endpoint:
