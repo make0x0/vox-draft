@@ -60,6 +60,7 @@ def get_openai_client(service_type: str = "llm"):
         # Parse Azure URL components for Runtime Client
         base_endpoint = endpoint
         deployment_name = None
+        api_version = azure_api_version
         
         # Extract deployment from URL: .../deployments/{name}/...
         if endpoint:
