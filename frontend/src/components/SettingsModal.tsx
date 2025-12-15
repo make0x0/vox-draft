@@ -546,7 +546,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             <span className="font-bold block">Model / Endpoint:</span>
                                             {((generalSettings as any).stt_provider === 'gemini')
                                                 ? `Model: ${(generalSettings as any).stt_gemini_model || "gemini-1.5-flash"}`
-                                                : `Endpoint: ${apiConfig.stt.azure_endpoint || apiConfig.stt.url}`}
+                                                : `Endpoint: ${(generalSettings as any).azure_openai_stt_endpoint || (generalSettings as any).azure_openai_endpoint || apiConfig.stt.azure_endpoint || "未設定 (Undefined)"}`}
                                         </div>
 
                                         <div className="col-span-2 mt-2 flex flex-col items-end gap-1">
@@ -684,7 +684,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                             <span className="font-bold block">Model / Endpoint:</span>
                                             {((generalSettings as any).llm_provider === 'gemini')
                                                 ? `Model: ${(generalSettings as any).llm_gemini_model || "gemini-1.5-flash"}`
-                                                : `Endpoint: ${apiConfig.llm.azure_deployment || apiConfig.llm.model}`}
+                                                : `Endpoint: ${(generalSettings as any).azure_openai_llm_endpoint || (generalSettings as any).azure_openai_endpoint || apiConfig.llm.azure_deployment || "未設定 (Undefined)"}`}
                                         </div>
                                         <div className="col-span-2 mt-2 flex flex-col items-end gap-1">
                                             <div className="flex items-center gap-2">
@@ -767,6 +767,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     <div className="border-t pt-4">
                                         <h5 className="text-sm font-bold text-gray-700 mb-2">Azure OpenAI Settings</h5>
                                         <div className="space-y-3">
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-700 mb-1">Azure Endpoint (Base)</label>
+                                                <input
+                                                    type="text"
+                                                    value={(generalSettings as any).azure_openai_endpoint || ""}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, azure_openai_endpoint: e.target.value } as any)}
+                                                    className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
+                                                    placeholder="https://my-resource.openai.azure.com/"
+                                                />
+                                                <p className="text-[10px] text-gray-400 mt-0.5">共通エンドポイント。個別に指定がない場合に使用されます。</p>
+                                            </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">Azure API Key (共通)</label>
                                                 <input
