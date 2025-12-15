@@ -1,5 +1,7 @@
 from openai import OpenAI, AzureOpenAI
 from app.core.config import settings
+import re
+from app.core.logging import log_safe
 
 def get_openai_client(service_type: str = "llm"):
     """
@@ -55,27 +57,46 @@ def get_openai_client(service_type: str = "llm"):
         if not endpoint:
              print(f"Warning: Azure {service_type} selected but endpoint missing.")
 
-        api_version = azure_api_version
+        # Parse Azure URL components for Runtime Client
+        base_endpoint = endpoint
+        deployment_name = None
         
+        # Extract deployment from URL: .../deployments/{name}/...
+        if endpoint:
+            dep_match = re.search(r"/openai/deployments/([^/]+)", endpoint)
+            if dep_match:
+                deployment_name = dep_match.group(1)
+            
+            # Extract Base Endpoint
+            base_match = re.search(r"^(https?://[^/]+)", endpoint)
+            if base_match:
+                base_endpoint = base_match.group(1) + "/"
+
+            # Extract Version from URL query param if present
+            ver_match = re.search(r"[?&]api-version=([^&]+)", endpoint)
+            if ver_match:
+                api_version = ver_match.group(1)
+
+        client_args = {
+            "api_version": api_version,
+            "azure_endpoint": base_endpoint,
+            "timeout": timeout,
+            "max_retries": max_retries
+        }
+        
+        if deployment_name:
+            client_args["azure_deployment"] = deployment_name
+
         # Auth Strategy: AD Token > API Key
         if azure_ad_token:
-            return AzureOpenAI(
-                azure_ad_token=azure_ad_token,
-                api_version=api_version,
-                azure_endpoint=endpoint,
-                timeout=timeout,
-                max_retries=max_retries
-            )
+            client_args["azure_ad_token"] = azure_ad_token
         elif azure_api_key:
-             return AzureOpenAI(
-                api_key=azure_api_key,
-                api_version=api_version,
-                azure_endpoint=endpoint,
-                timeout=timeout,
-                max_retries=max_retries
-            )
+            client_args["api_key"] = azure_api_key
         else:
              raise ValueError("Azure OpenAI selected but API Key or AD Token is missing. Please check your Settings.")
+             
+        return AzureOpenAI(**client_args)
+
     else:
         # Standard OpenAI
         return OpenAI(

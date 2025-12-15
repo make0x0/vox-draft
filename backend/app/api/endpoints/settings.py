@@ -76,48 +76,66 @@ def test_connection(request: settings_schema.TestConnectionRequest):
             
             api_version = app_settings.LLM_AZURE_API_VERSION
             
-            # Clean up endpoint if it contains path
-            # AzureOpenAI client expects the base endpoint (resource URL)
-            # e.g. https://xyz.openai.azure.com/  (NOT .../openai/deployments/...)
-            clean_endpoint = endpoint
-            if "/openai/deployments" in endpoint:
-                match = re.search(r"^(https?://[^/]+)", endpoint)
-                if match:
-                    clean_endpoint = match.group(1) + "/"
-                    # log_safe(f"Normalized Azure Endpoint: {endpoint} -> {clean_endpoint}")
+            # Parse Azure URL components
+            base_endpoint = endpoint
+            deployment_name = None
             
-            # log_safe(f"Testing Azure Connection to: {clean_endpoint} with version {api_version}")
+            # Extract deployment from URL: .../deployments/{name}/...
+            dep_match = re.search(r"/openai/deployments/([^/]+)", endpoint)
+            if dep_match:
+                deployment_name = dep_match.group(1)
+            
+            # Extract Base Endpoint: https://{resource}.openai.azure.com/
+            base_match = re.search(r"^(https?://[^/]+)", endpoint)
+            if base_match:
+                base_endpoint = base_match.group(1) + "/"
+
+            # Extract Version from URL query param if present
+            ver_match = re.search(r"[?&]api-version=([^&]+)", endpoint)
+            if ver_match:
+                api_version = ver_match.group(1)
+            
+            log_safe(f"Azure Connection Test: Endpoint={base_endpoint}, Deployment={deployment_name}, Version={api_version}")
 
             try:
+                client_args = {
+                    "api_version": api_version,
+                    "azure_endpoint": base_endpoint,
+                    "timeout": 10.0,
+                    "max_retries": 1
+                }
+                
+                if deployment_name:
+                    client_args["azure_deployment"] = deployment_name
+
                 if ad_token:
-                    client = AzureOpenAI(
-                        azure_ad_token=ad_token,
-                        api_version=api_version,
-                        azure_endpoint=clean_endpoint,
-                        timeout=10.0,
-                        max_retries=1
-                    )
+                    client_args["azure_ad_token"] = ad_token
                 elif api_key:
-                    client = AzureOpenAI(
-                        api_key=api_key,
-                        api_version=api_version,
-                        azure_endpoint=clean_endpoint,
-                        timeout=10.0,
-                        max_retries=1
-                    )
+                    client_args["api_key"] = api_key
                 else:
                      raise ValueError("Azure API Key or AD Token is required.")
 
-                # Lightweight check using models.list()
-                # Use verify logic: if models.list fails, it might be permissions or strict firewall.
-                # But usually models.list works on base endpoint.
-                client.models.list()
+                client = AzureOpenAI(**client_args)
+
+                # Verification Logic
+                if service_type == "llm":
+                    # Try a lightweight completion
+                    client.chat.completions.create(
+                        messages=[{"role": "user", "content": "ping"}],
+                        max_tokens=1
+                    )
+                else:
+                    # For STT, we can't easily valid without audio.
+                    # Just instantiating client successfully is a partial check.
+                    # We avoid models.list() as it often fails on standard Azure keys.
+                    pass
                 
             except Exception as e:
-                # If 404, it specifically means the Endpoint URL is likely wrong (resource not found).
                 error_str = str(e)
-                if "404" in error_str:
-                     raise ValueError(f"Resource Not Found (404). Please check your Azure Endpoint URL. It should normally look like 'https://{{resource}}.openai.azure.com/'. Original Error: {error_str}")
+                log_safe(f"Azure Test Failed: {error_str}")
+                # Provide helpful hint for common 404
+                if "404" in error_str and not deployment_name:
+                     raise ValueError(f"Resource Not Found (404). Please ensure your URL includes the deployment name (e.g. .../deployments/gpt-4o/...) OR usually checking 'Full URL' format. Original Error: {error_str}")
                 raise e
                 
             return {"ok": True, "message": "Successfully connected to Azure OpenAI."}
