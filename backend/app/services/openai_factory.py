@@ -99,8 +99,16 @@ def get_openai_client(service_type: str = "llm"):
 
     else:
         # Standard OpenAI
-        return OpenAI(
-            api_key=openai_api_key,
-            timeout=timeout,
-            max_retries=max_retries
-        )
+        client_args = {
+            "api_key": openai_api_key,
+            "timeout": timeout,
+            "max_retries": max_retries
+        }
+        
+        # Use custom base_url if configured (from config.yaml)
+        if service_type == "stt" and settings.STT_OPENAI_API_URL:
+            client_args["base_url"] = settings.STT_OPENAI_API_URL
+        elif service_type == "llm" and settings.LLM_OPENAI_API_URL:
+            client_args["base_url"] = settings.LLM_OPENAI_API_URL
+
+        return OpenAI(**client_args)

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     # Loaded from config.yaml
     ALLOWED_ORIGINS: list = ["*"]
     STT_PROVIDER: str = "openai"
+    STT_OPENAI_API_URL: str = ""
     STT_GEMINI_MODEL: str = "gemini-2.5-flash"
     STT_AZURE_DEPLOYMENT: str = "whisper"
     STT_AZURE_API_VERSION: str = "2024-06-01"
@@ -40,6 +41,7 @@ class Settings(BaseSettings):
     STT_MAX_RETRIES: int = 3
 
     LLM_PROVIDER: str = "openai"
+    LLM_OPENAI_API_URL: str = ""
     LLM_MODEL: str = "gpt-4o"
     LLM_GEMINI_MODEL: str = "gemini-2.5-flash"
     LLM_AZURE_DEPLOYMENT: str = "gpt-4o"
@@ -107,10 +109,12 @@ def load_config():
             settings.ALLOWED_ORIGINS = system.get("server", {}).get("allowed_origins", ["*"])
             
             # STT settings (provider is loaded from settings.yaml)
+            settings.STT_OPENAI_API_URL = str(stt.get("openai_api_url", ""))
             settings.STT_TIMEOUT = float(stt.get("timeout", 60.0))
             settings.STT_MAX_RETRIES = int(stt.get("max_retries", 3))
 
             # LLM settings (provider is loaded from settings.yaml)
+            settings.LLM_OPENAI_API_URL = str(llm.get("openai_api_url", ""))
             settings.LLM_TIMEOUT = float(llm.get("timeout", 60.0))
             settings.LLM_MAX_RETRIES = int(llm.get("max_retries", 3))
             

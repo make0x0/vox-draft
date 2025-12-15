@@ -13,19 +13,19 @@ def get_system_config():
         "notifications": settings.NOTIFICATIONS,
         "stt": {
              "provider": settings.STT_PROVIDER,
-             "url": settings.STT_API_URL, # Kept for backward compat
+             "url": settings.STT_OPENAI_API_URL or settings.AZURE_OPENAI_STT_ENDPOINT, 
              # Azure details
              "azure_deployment": settings.STT_AZURE_DEPLOYMENT,
-             "azure_endpoint": settings.STT_AZURE_ENDPOINT_RAW or settings.STT_AZURE_ENDPOINT,
+             "azure_endpoint": settings.AZURE_OPENAI_STT_ENDPOINT,
              "timeout": settings.STT_TIMEOUT
         },
         "llm": {
              "provider": settings.LLM_PROVIDER,
              "model": settings.LLM_MODEL,
-             "url": settings.LLM_API_URL, # Kept for backward compat
+             "url": settings.LLM_OPENAI_API_URL or settings.AZURE_OPENAI_LLM_ENDPOINT, 
              # Azure details
              "azure_deployment": settings.LLM_AZURE_DEPLOYMENT,
-             "azure_endpoint": settings.LLM_AZURE_ENDPOINT_RAW or settings.LLM_AZURE_ENDPOINT,
+             "azure_endpoint": settings.AZURE_OPENAI_LLM_ENDPOINT,
              "timeout": settings.LLM_TIMEOUT
         }
     }
